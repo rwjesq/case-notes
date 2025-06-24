@@ -539,7 +539,6 @@
             matterSearchStatus.innerHTML = '<div class="loader"></div>';
             
             try {
-                // FIXED: Use 'no-cors' mode to prevent CORS errors from browser
                 await fetch(searchUrl, {
                     method: 'POST', mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
