@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Notes Application</title>
+    <!-- FAVICON: This will be updated dynamically by the script -->
+    <link rel="icon" type="image/png" href="https://placehold.co/32x32/1e3a8a/ffffff?text=L">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab { cursor: pointer; }
+        .tab.active { border-bottom-width: 2px; border-color: #4F46E5; color: #4F46E5; font-weight: 600;}
+        .tab:hover { background-color: #e0e7ff; }
+        textarea { min-height: 80px; }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+        .form-section {
+            border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+            padding: 1rem;
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            margin-bottom: 1rem;
+        }
+        .form-section-title {
+            font-size: 1.125rem; /* Tailwind text-lg */
+            font-weight: 600; /* Tailwind font-semibold */
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        /* Custom scrollbar for tab container */
+        #tab-container::-webkit-scrollbar { height: 8px; }
+        #tab-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        #tab-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        #tab-container::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        .toast {
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 12px 20px; border-radius: 8px; color: white;
+            font-size: 0.875rem; z-index: 1050; /* Ensure toast is above modal overlay */
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(20px);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #28a745; }
+        .toast.error { background-color: #dc3545; }
+        .toast.info { background-color: #17a2b8; }
+
+        .loader {
+            border: 2px solid #f3f3f3; border-top: 2px solid #3498db;
+            border-radius: 50%; width: 16px; height: 16px;
+            animation: spin 1s linear infinite; display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative; /* For close button positioning */
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            line-height: 1;
+            cursor: pointer;
+            color: #6b7280; /* gray-500 */
+        }
+        .modal-close-btn:hover {
+            color: #1f2937; /* gray-800 */
+        }
+        .add-btn {
+            background-color: #34d399; color: white;
+            border-radius: 9999px; width: 24px; height: 24px;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; border: none; margin-left: 8px;
+            flex-shrink: 0; /* Prevents button from shrinking */
+        }
+        .add-btn:hover { background-color: #10b981; }
+        label.error {
+            color: #dc3545; /* Red for errors */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="container mx-auto p-4 max-w-6xl">
+        <header class="mb-6 text-center relative">
+            <h1 class="text-3xl font-bold text-indigo-700">Daily Court Sheet</h1>
+            <p class="text-sm text-slate-500">Manage your court appearances and case notes.</p>
+            <img id="headerLogo" src="https://placehold.co/240x60/1e3a8a/ffffff?text=Your+Logo" alt="Logo" class="mx-auto my-4 h-12 hidden">
+            <button id="settingsBtn" class="absolute top-0 right-0 p-2 text-slate-600 hover:text-indigo-700 focus:outline-none" title="Webhook Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+
+        <div class="mb-4 flex justify-between items-center">
+            <button id="addNewNoteBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                New Court Sheet
+            </button>
+        </div>
+
+        <div id="tab-container" class="flex overflow-x-auto border-b border-slate-300 mb-1 bg-white rounded-t-lg shadow scrollbar-thin scrollbar-thumb-slate-400 scrollbar-track-slate-200 py-1">
+            <span id="noTabsMessage" class="p-3 text-slate-500 italic">No open sheets. Click "New Court Sheet".</span>
+        </div>
+
+        <div id="form-area" class="bg-white p-6 rounded-b-lg shadow">
+            <div id="activeFormContainer" class="hidden">
+                <form id="caseNoteForm" class="space-y-6">
+                    <input type="hidden" id="matterDescription" name="matterDescription">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label for="noteDate" class="block text-sm">Date:</label><input type="date" id="noteDate" name="noteDate" class="mt-1 w-full p-2 border rounded bg-slate-50"></div>
+                        <div><label for="judgeName" class="block text-sm">Judge:</label><input type="text" id="judgeName" name="judgeName" class="mt-1 w-full p-2 border rounded"></div>
+                        <div><label for="caseType" class="block text-sm">Type of Case:</label><select id="caseType" name="caseType" class="mt-1 w-full p-2 border rounded" required><option value="">-- Select --</option><option value="family">Family</option><option value="criminal">Criminal</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="clientName" class="block text-sm">Client Name:</label>
+                            <input type="text" id="clientName" name="clientName" class="mt-1 w-full p-2 border rounded" required>
+                            <p class="text-xs text-slate-500 mt-1">Please do not use commas.</p>
+                        </div>
+                        <div><label for="courtName" class="block text-sm">Court:</label><input type="text" id="courtName" name="courtName" class="mt-1 w-full p-2 border rounded"></div>
+                        <div>
+                            <label for="rwjMatterNumber" class="block text-sm">RWJ Matter #:</label>
+                            <div class="flex items-center">
+                                <input type="text" id="rwjMatterNumber" name="rwjMatterNumber" class="mt-1 w-full p-2 border rounded">
+                                <div id="matterSearchStatus" class="ml-2 text-sm text-slate-500 w-28 text-left"></div>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                        <div><label for="durationHours" class="block text-sm">Time in Court (Hrs):</label><input type="number" id="durationHours" name="durationHours" step="0.1" min="0" class="mt-1 w-full p-2 border rounded" placeholder="e.g., 2.5"></div>
+                        <div><label class="block text-sm">Client Present?</label><select id="clientPresent" name="clientPresent" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                        <div><label class="block text-sm">Incarcerated?</label><select id="clientIncarcerated" name="clientIncarcerated" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                        <div><label class="block text-sm">Virtual?</label><select id="clientVirtual" name="clientVirtual" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                         <div id="imhoff-case-field" class="hidden"><label class="block text-sm">Imhoff Case?:</label><select id="imhoffCase" name="imhoffCase" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                    </div>
+
+                    <div id="familySpecificFields" class="hidden form-section">
+                        <h3 class="form-section-title">Family Case Details</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm">Opposing Counsel(s):</label>
+                                <div id="opposing-counsel-container" class="space-y-2">
+                                    <!-- Dynamic fields will be inserted here -->
+                                </div>
+                            </div>
+                             <div>
+                                <label class="block text-sm">Other Counsel(s):</label>
+                                <div id="other-counsel-container" class="space-y-2">
+                                    <!-- Dynamic fields will be inserted here -->
+                                </div>
+                            </div>
+                             <div>
+                                <label class="block text-sm">AFC(s):</label>
+                                <div id="afc-container" class="space-y-2">
+                                     <!-- Dynamic fields will be inserted here -->
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                <div><label class="block text-sm">Financials?</label><select id="familyFinancials" name="familyFinancials" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                <div><label class="block text-sm">Disposition?</label><select id="familyDisposition" name="familyDisposition" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                <div><label class="block text-sm">Trial?</label><select id="familyTrial" name="familyTrial" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            </div>
+                             <div id="family-disposition-details" class="hidden space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label for="familyDispoMethod" class="block text-sm">Dispo Method:</label><select id="familyDispoMethod" name="familyDispoMethod" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Hearing</option><option>Default</option><option>Stipulation</option><option>Consent (Admission)</option><option>Consent (No Admission)</option><option>On Motion</option></select></div>
+                                    <div><label for="familyPetition" class="block text-sm">Petition:</label><select id="familyPetition" name="familyPetition" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Dismissed</option><option>Modified</option><option>Other</option><option>Stipulation</option><option>Sustained</option><option>Withdrawn</option></select></div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                    <div><label class="block text-sm">Relieved?</label><select id="familyRelieved" name="familyRelieved" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                    <div><label class="block text-sm">BW?:</label><select id="familyBW" name="familyBW" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                </div>
+                                 <div id="family-relieved-details" class="hidden space-y-4">
+                                    <div><label for="familyReasonRelieved" class="block text-sm">Reason Relieved:</label><input type="text" id="familyReasonRelieved" name="familyReasonRelieved" class="mt-1 w-full p-2 border rounded"></div>
+                                    <div><label for="familySubsequentAttorney" class="block text-sm">Subsequent Attorney:</label><input type="text" id="familySubsequentAttorney" name="familySubsequentAttorney" class="mt-1 w-full p-2 border rounded"></div>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div id="criminalSpecificFields" class="hidden form-section">
+                        <h3 class="form-section-title">Criminal Case Details</h3>
+                        <div class="space-y-4">
+                            <div><label for="criminalADA" class="block text-sm">ADA:</label><input type="text" id="criminalADA" name="criminalADA" class="mt-1 w-full p-2 border rounded"></div>
+                            <div><label for="criminalCharges" class="block text-sm">Charges:</label><textarea id="criminalCharges" name="criminalCharges" class="mt-1 w-full p-2 border rounded"></textarea></div>
+                            <div><label for="criminalOffer" class="block text-sm">Offer:</label><textarea id="criminalOffer" name="criminalOffer" class="mt-1 w-full p-2 border rounded"></textarea></div>
+                            
+                            <div><label class="block text-sm">Discovery Y/N?</label><select id="criminalDiscovery" name="criminalDiscovery" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            <div id="criminal-discovery-details" class="hidden space-y-4">
+                                <div><label for="criminalDiscoveryServedDate" class="block text-sm">Discovery Served Date:</label><input type="date" id="criminalDiscoveryServedDate" name="criminalDiscoveryServedDate" class="mt-1 w-full p-2 border rounded"></div>
+                                <div><label class="block text-sm">CoC Served?</label><select id="criminalCocServed" name="criminalCocServed" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            </div>
+
+                            <div><label class="block text-sm">Statement Y/N?</label><select id="criminalStatement" name="criminalStatement" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+
+                            <div><label class="block text-sm">Disposition?</label><select id="criminalDisposition" name="criminalDisposition" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            
+                            <div id="criminal-disposition-details" class="hidden space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                    <div><label class="block text-sm">Relieved?</label><select id="criminalRelieved" name="criminalRelieved" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                    <div><label class="block text-sm">BW?</label><select id="criminalBW" name="criminalBW" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                </div>
+                                <div id="criminal-relieved-details" class="hidden space-y-4">
+                                    <div><label for="criminalReasonRelieved" class="block text-sm">Reason Relieved:</label><input type="text" id="criminalReasonRelieved" name="criminalReasonRelieved" class="mt-1 w-full p-2 border rounded"></div>
+                                    <div><label for="criminalSubsequentAttorney" class="block text-sm">Subsequent Attorney:</label><input type="text" id="criminalSubsequentAttorney" name="criminalSubsequentAttorney" class="mt-1 w-full p-2 border rounded"></div>
+                                </div>
+                                <div id="criminal-sentence-details" class="space-y-4">
+                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label for="amountOfSentence" class="block text-sm">Amount of Sentence:</label><input type="number" id="amountOfSentence" name="amountOfSentence" class="mt-1 w-full p-2 border rounded"></div>
+                                        <div><label for="measurementOfSentence" class="block text-sm">Measurement of Sentence:</label><select id="measurementOfSentence" name="measurementOfSentence" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Hour(s)</option><option>Day(s)</option><option>Week(s)</option><option>Month(s)</option><option>Year(s)</option><option>Dollar(s)</option></select></div>
+                                    </div>
+                                    <div><label for="criminalSentence" class="block text-sm">Sentence:</label><select id="criminalSentence" name="criminalSentence" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>CD</option><option>ACD</option><option>Fine</option><option>UD</option><option>Dismissed</option><option>Dismissed in Satisfaction</option><option>Probation</option><option>Jail (local)</option><option>Jail (State)</option></select></div>
+                                    <div><label for="criminalSentenceType" class="block text-sm">Sentence Type:</label><select id="criminalSentenceType" name="criminalSentenceType" class="mt-1 w-full p-2 border rounded"><option>2nd Felony Offender</option><option>2nd Violent Felony Offender</option><option>Juvenile Offender</option><option>Persistent Felony Offender</option><option>Persistent Violent Felony Offender</option><option>Youthful Offender</option></select></div>
+                                    <div><label for="criminalConvictionOffense" class="block text-sm">Conviction Offense:</label><input type="text" id="criminalConvictionOffense" name="criminalConvictionOffense" class="mt-1 w-full p-2 border rounded"></div>
+                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div><label for="criminalFine" class="block text-sm">Fine:</label><input type="number" id="criminalFine" name="criminalFine" class="mt-1 w-full p-2 border rounded" step="0.01"></div>
+                                        <div><label for="criminalSurcharge" class="block text-sm">Surcharge:</label><input type="number" id="criminalSurcharge" name="criminalSurcharge" class="mt-1 w-full p-2 border rounded" step="0.01"></div>
+                                        <div><label for="criminalDnaFee" class="block text-sm">DNA Fee:</label><input type="number" id="criminalDnaFee" name="criminalDnaFee" class="mt-1 w-full p-2 border rounded" step="0.01"></div>
+                                        <div><label for="criminalFAndSDue" class="block text-sm">F&S $ Due:</label><input type="date" id="criminalFAndSDue" name="criminalFAndSDue" class="mt-1 w-full p-2 border rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                             <div id="imhoff-details" class="hidden space-y-4 form-section">
+                                 <h4 class="form-section-title text-base">Imhoff Case Details</h4>
+                                <div><label class="block text-sm">What level the case is:</label><select id="imhoffCaseLevel" name="imhoffCaseLevel" class="mt-1 w-full p-2 border rounded"><option>Misdemeanor</option><option>Felony</option><option>Federal</option></select></div>
+                                <div><label class="block text-sm">Imhoff Appearance Type:</label><select id="imhoffAppearanceType" name="imhoffAppearanceType" class="mt-1 w-full p-2 border rounded"><option value="" disabled selected>-- Select --</option><option>Motion</option><option>Trial</option></select></div>
+                                <div><label class="block text-sm">Win Motion or Trial?</label><select id="winMotionOrTrial" name="winMotionOrTrial" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="criminalBailStatusChange" class="block text-sm">Change in Bail Status:</label><textarea id="criminalBailStatusChange" name="criminalBailStatusChange" class="mt-1 w-full p-2 border rounded" rows="2"></textarea></div>
+                                <div><label for="bailAmount" class="block text-sm">Bail Amount:</label><input type="text" id="bailAmount" name="bailAmount" class="mt-1 w-full p-2 border rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                         <h3 class="form-section-title">Follow-up & Notes</h3>
+                        <div class="space-y-4">
+                            <div><label for="detailedNotes" class="block text-sm">Case Notes:</label><textarea id="detailedNotes" name="detailedNotes" rows="5" class="mt-1 w-full p-2 border rounded"></textarea></div>
+                             <div>
+                                <div class="grid grid-cols-6 gap-2 mb-2 items-end">
+                                    <label class="block text-sm col-span-3">Follow up tasks:</label>
+                                    <label class="block text-sm col-span-2">Due Date:</label>
+                                    <label class="block text-sm">Assigned to:</label>
+                                </div>
+                                <div id="follow-up-container" class="space-y-2">
+                                    <div class="grid grid-cols-6 gap-2 items-center">
+                                        <input type="text" name="followUpTask" placeholder="Task #1" class="col-span-3 p-2 border rounded">
+                                        <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
+                                        <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
+                                    </div>
+                                     <div class="grid grid-cols-6 gap-2 items-center">
+                                        <input type="text" name="followUpTask" placeholder="Task #2" class="col-span-3 p-2 border rounded">
+                                        <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
+                                        <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
+                                    </div>
+                                     <div class="grid grid-cols-6 gap-2 items-center">
+                                        <input type="text" name="followUpTask" placeholder="Task #3" class="col-span-3 p-2 border rounded">
+                                        <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
+                                        <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="next-appearance-section">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label for="nextAppearanceDateTime" class="block text-sm">Next Appearance Date & Time:</label><input type="datetime-local" id="nextAppearanceDateTime" name="nextAppearanceDateTime" class="mt-1 w-full p-2 border rounded"></div>
+                                    <div><label for="nextAppearanceReason" class="block text-sm">Reason for Next Appearance:</label><input type="text" id="nextAppearanceReason" name="nextAppearanceReason" class="mt-1 w-full p-2 border rounded"></div>
+                                </div>
+                                <div id="adjournment-container" class="hidden mt-4">
+                                    <label for="criminalAdjournment" class="block text-sm">Adjournment Requested by:</label><select id="criminalAdjournment" name="criminalAdjournment" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option value="defense">Defense</option><option>Prosecution</option><option>Court</option><option value="other">Other</option></select>
+                                </div>
+                            </div>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div><label class="block text-sm">Motion?</label><select id="commonMotion" name="commonMotion" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                                <div><label class="block text-sm">Draft Order?</label><select id="commonDraftOrder" name="commonDraftOrder" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex flex-wrap gap-3 border-t border-slate-200">
+                        <button type="button" id="clearFormBtn" class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm">Clear Form</button>
+                        <button type="button" id="submitToZapierBtn" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-sm">Submit to Zapier</button>
+                        <button type="button" id="exportToPdfBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm">Export as PDF</button>
+                        <button type="button" id="closeNoteBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm ml-auto">Close Sheet</button>
+                    </div>
+                </form>
+            </div>
+            <div id="noActiveFormMessage" class="text-center py-10">
+                <p class="text-slate-500 text-lg">Select a sheet to view or create a new one.</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-300 mx-auto mt-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            </div>
+        </div>
+    </div>
+    
+    <div id="webhookSettingsModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <button id="webhookSettingsModalCloseBtn" class="modal-close-btn">&times;</button>
+            <h3 class="text-xl font-semibold mb-4">Webhook Settings</h3>
+            <div class="space-y-3">
+                <div><label for="zapierWebhookUrl_criminal" class="block text-sm font-medium text-slate-700 mb-1">Criminal Cases Submit URL:</label><input type="text" id="zapierWebhookUrl_criminal" placeholder="Criminal Cases Webhook URL" class="w-full p-2 border rounded-md"></div>
+                <div><label for="zapierWebhookUrl_family" class="block text-sm font-medium text-slate-700 mb-1">Family Court Cases Submit URL:</label><input type="text" id="zapierWebhookUrl_family" placeholder="Family Court Cases Webhook URL" class="w-full p-2 border rounded-md"></div>
+                <div><label for="zapierWebhookUrl_clioSearch" class="block text-sm font-medium text-slate-700 mb-1">Clio Search Init URL (Zapier):</label><input type="text" id="zapierWebhookUrl_clioSearch" placeholder="Clio Search Init Webhook URL" class="w-full p-2 border rounded-md"></div>
+                 <div><label for="googleSheetCsvUrl" class="block text-sm font-medium text-slate-700 mb-1">Google Sheet CSV URL:</label><input type="text" id="googleSheetCsvUrl" placeholder="Published Google Sheet CSV URL" class="w-full p-2 border rounded-md"></div>
+                 <div class="border-t pt-4 mt-2">
+                     <label for="logoUpload" class="block text-sm font-medium text-slate-700 mb-1">Upload Logo:</label>
+                     <input type="file" id="logoUpload" accept="image/png, image/jpeg, image/gif" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                     <div class="mt-4">
+                        <p class="text-sm font-medium text-slate-700">Logo Preview:</p>
+                        <img id="logoPreview" class="mt-2 h-16 border p-1 rounded" src="https://placehold.co/240x60/f0f0f0/cccccc?text=No+Logo">
+                     </div>
+                     <button type="button" id="removeLogoBtn" class="mt-2 px-3 py-1 bg-red-100 text-red-700 text-xs rounded-md hover:bg-red-200">Remove Logo</button>
+                 </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="saveWebhookUrlsBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm">Save & Close Settings</button>
+            </div>
+             <p class="text-xs text-slate-500 mt-3">Settings are saved locally in your browser.</p>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+    window.onload = function() {
+        // --- Element Selection ---
+        const el = (id) => document.getElementById(id);
+        const criminalWebhookInput = el('zapierWebhookUrl_criminal');
+        const familyWebhookInput = el('zapierWebhookUrl_family');
+        const clioSearchWebhookInput = el('zapierWebhookUrl_clioSearch');
+        const googleSheetCsvUrlInput = el('googleSheetCsvUrl');
+        const saveWebhookBtn = el('saveWebhookUrlsBtn');
+        const settingsBtn = el('settingsBtn');
+        const webhookSettingsModalOverlay = el('webhookSettingsModalOverlay');
+        const webhookSettingsModalCloseBtn = el('webhookSettingsModalCloseBtn');
+        const addNewBtn = el('addNewNoteBtn');
+        const tabDiv = el('tab-container');
+        const activeFormDiv = el('activeFormContainer');
+        const noActiveMsgDiv = el('noActiveFormMessage');
+        const noTabsMsgSpan = el('noTabsMessage');
+        const formEl = el('caseNoteForm');
+        const clearFormButton = el('clearFormBtn');
+        const matterNumberInput = el('rwjMatterNumber');
+        const matterSearchStatus = el('matterSearchStatus');
+        const submitToZapierBtn = el('submitToZapierBtn');
+        const exportToPdfBtn = el('exportToPdfBtn');
+        const closeNoteBtn = el('closeNoteBtn');
+        const logoUploadInput = el('logoUpload');
+        const logoPreviewImg = el('logoPreview');
+        const headerLogoImg = el('headerLogo');
+        const removeLogoBtn = el('removeLogoBtn');
+        
+        // --- State Management ---
+        let currentActiveTabId = null;
+        let localNotesData = {};
+        const NOTES_KEY = 'courtSheetNotes';
+        const LOGO_KEY = 'appLogo';
+        let poller = { intervalId: null, timeoutId: null };
+        let matterSearchDebounceTimer;
+        let formUpdateDebounceTimer;
+
+        // --- Helper Functions ---
+        function showToast(message, type = 'info') {
+            const tc = el('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            tc.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function getFormattedDate(dateObj = new Date()) {
+            return dateObj.toISOString().split('T')[0];
+        }
+
+        // --- Settings & Logo Management ---
+        function applyLogo(logoData) {
+            const favicon = document.querySelector("link[rel='icon']");
+            if (logoData) {
+                headerLogoImg.src = logoData;
+                headerLogoImg.classList.remove('hidden');
+                logoPreviewImg.src = logoData;
+                favicon.href = logoData;
+            } else {
+                headerLogoImg.classList.add('hidden');
+                logoPreviewImg.src = 'https://placehold.co/240x60/f0f0f0/cccccc?text=No+Logo';
+                favicon.href = 'https://placehold.co/32x32/1e3a8a/ffffff?text=L';
+            }
+        }
+        
+        function loadAndApplyLogo() {
+            const logoData = localStorage.getItem(LOGO_KEY);
+            applyLogo(logoData);
+        }
+
+        logoUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64String = e.target.result;
+                    localStorage.setItem(LOGO_KEY, base64String);
+                    applyLogo(base64String);
+                    showToast('Logo saved.', 'success');
+                };
+                reader.readAsDataURL(file);
+            } else if (file) {
+                showToast('Please select a valid image file.', 'error');
+            }
+        });
+
+        removeLogoBtn.addEventListener('click', () => {
+            localStorage.removeItem(LOGO_KEY);
+            applyLogo(null);
+            showToast('Logo removed.', 'info');
+        });
+
+        function loadWebhookUrlsToModal() {
+            criminalWebhookInput.value = localStorage.getItem('zapierWebhookUrl_criminal') || '';
+            familyWebhookInput.value = localStorage.getItem('zapierWebhookUrl_family') || '';
+            clioSearchWebhookInput.value = localStorage.getItem('zapierWebhookUrl_clioSearch') || '';
+            googleSheetCsvUrlInput.value = localStorage.getItem('googleSheetCsvUrl') || '';
+        }
+
+        settingsBtn.addEventListener('click', () => {
+            loadWebhookUrlsToModal();
+            loadAndApplyLogo();
+            webhookSettingsModalOverlay.classList.add('active');
+        });
+
+        webhookSettingsModalCloseBtn.addEventListener('click', () => webhookSettingsModalOverlay.classList.remove('active'));
+        webhookSettingsModalOverlay.addEventListener('click', (e) => {
+            if (e.target === webhookSettingsModalOverlay) webhookSettingsModalOverlay.classList.remove('active');
+        });
+
+        saveWebhookBtn.addEventListener('click', () => {
+            localStorage.setItem('zapierWebhookUrl_criminal', criminalWebhookInput.value.trim());
+            localStorage.setItem('zapierWebhookUrl_family', familyWebhookInput.value.trim());
+            localStorage.setItem('zapierWebhookUrl_clioSearch', clioSearchWebhookInput.value.trim());
+            localStorage.setItem('googleSheetCsvUrl', googleSheetCsvUrlInput.value.trim());
+            showToast('Settings saved!', 'success');
+            webhookSettingsModalOverlay.classList.remove('active');
+        });
+
+        // --- Data Retrieval & Parsing (Background Search) ---
+        function parseCSV(text) {
+             const result = [];
+             const lines = text.replace(/\r/g, '').split('\n');
+             if (lines.length < 1) return [];
+
+             const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/ /g, '_').replace(/[^a-z0-9_]/g, ''));
+             
+             for (let i = 1; i < lines.length; i++) {
+                 const values = [];
+                 let current = '';
+                 let inQuotes = false;
+                 for (let j = 0; j < lines[i].length; j++) {
+                     const char = lines[i][j];
+                     if (char === '"' && (j === 0 || lines[i][j-1] !== '\\')) {
+                         inQuotes = !inQuotes;
+                     } else if (char === ',' && !inQuotes) {
+                         values.push(current);
+                         current = '';
+                     } else {
+                         current += char;
+                     }
+                 }
+                 values.push(current);
+
+                 const rowObject = {};
+                 headers.forEach((header, index) => {
+                     rowObject[header] = (values[index] || '').trim().replace(/^"|"$/g, '');
+                 });
+                 result.push(rowObject);
+             }
+             return result;
+        }
+
+        async function searchByMatterNumberInBackground(matterNumber) {
+            if (!matterNumber) return;
+
+            const searchUrl = localStorage.getItem('zapierWebhookUrl_clioSearch');
+            const sheetUrl = localStorage.getItem('googleSheetCsvUrl');
+
+            if (!searchUrl || !sheetUrl) {
+                showToast('Webhook URLs not set in settings.', 'error');
+                return;
+            }
+
+            matterSearchStatus.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                // FIXED: Use 'no-cors' mode to prevent CORS errors from browser
+                await fetch(searchUrl, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ matter_number: matterNumber }),
+                });
+                showToast(`Searching for matter #${matterNumber}...`, 'info');
+
+            } catch (error) {
+                console.error("Webhook trigger error:", error);
+                matterSearchStatus.textContent = "Error";
+                showToast('Failed to start search.', 'error');
+                return;
+            }
+
+            setTimeout(() => {
+                let attempts = 0;
+                const maxAttempts = 60;
+                
+                poller.intervalId = setInterval(async () => {
+                    if (attempts >= maxAttempts) {
+                        clearInterval(poller.intervalId);
+                        matterSearchStatus.textContent = 'Timeout';
+                        return;
+                    }
+                    attempts++;
+                    
+                    try {
+                        const res = await fetch(`${sheetUrl}&_=${Date.now()}`);
+                        const csvText = await res.text();
+                        const rows = parseCSV(csvText);
+
+                        const foundRow = rows.find(row => row.matter_number === matterNumber);
+
+                        if (foundRow) {
+                            clearInterval(poller.intervalId);
+                            matterSearchStatus.textContent = 'Found';
+                            
+                            const caseData = {
+                                clientName: foundRow.client_name,
+                                courtName: foundRow.court,
+                                judgeName: foundRow.judge_name,
+                                criminalADA: foundRow.ada,
+                                criminalCharges: foundRow.charges,
+                                criminalOffer: foundRow.offer,
+                                criminalDiscovery: foundRow.discovery || 'No',
+                                criminalStatement: foundRow.statement || 'No',
+                                bailAmount: foundRow.bail_amount,
+                                familyOpposingCounsel: (foundRow.opposing_counsel || '').split(',').map(s => s.trim()),
+                                familyOtherCounsel: (foundRow.other_counsel || '').split(',').map(s => s.trim()),
+                                familyAFC: (foundRow.afc || '').split(',').map(s => s.trim()),
+                                familyFinancials: foundRow.financials || 'No'
+                            };
+
+                            if (caseData.criminalADA || caseData.criminalCharges) {
+                                caseData.caseType = 'criminal';
+                            } else if ((caseData.familyOpposingCounsel.join('') || caseData.familyFinancials !== 'No') && caseData.familyFinancials !== undefined) {
+                                caseData.caseType = 'family';
+                            }
+
+                            const currentData = localNotesData[currentActiveTabId] || getNewSheetData();
+                            const finalData = { ...currentData, ...caseData };
+
+                            populateForm(finalData);
+                            localNotesData[currentActiveTabId] = finalData;
+                            saveNotesToLocalStorage();
+                            updateTabTitle(currentActiveTabId);
+                            showToast(`Matter #${matterNumber} details populated.`, 'success');
+                        }
+                    } catch (e) {
+                        console.error("Polling error", e);
+                    }
+                }, 1000);
+            }, 5000);
+        }
+
+        matterNumberInput.addEventListener('input', (e) => {
+            clearTimeout(matterSearchDebounceTimer);
+            matterSearchDebounceTimer = setTimeout(() => {
+                const matterNumber = e.target.value.trim();
+                if(matterNumber) {
+                    searchByMatterNumberInBackground(matterNumber);
+                } else {
+                    matterSearchStatus.innerHTML = '';
+                }
+            }, 1000);
+        });
+        
+        // --- LocalStorage & Data Management ---
+        function saveNotesToLocalStorage() {
+            localStorage.setItem(NOTES_KEY, JSON.stringify(localNotesData));
+        }
+
+        function loadNotesFromLocalStorage() {
+            localNotesData = JSON.parse(localStorage.getItem(NOTES_KEY)) || {};
+            renderAllTabs();
+        }
+
+        function getNewSheetData() {
+            return {
+                noteDate: getFormattedDate(), judgeName: "", caseType: "", clientName: "", courtName: "", rwjMatterNumber: "",
+                durationHours: "", clientPresent: "No", clientIncarcerated: "No", clientVirtual: "No", imhoffCase: "No",
+                familyOpposingCounsel: [""], familyOtherCounsel: [""], familyAFC: [""],
+                familyDisposition: "No", familyTrial: "No", familyFinancials: "No", familyDispoMethod: "", familyPetition: "",
+                familyRelieved: "No", familyReasonRelieved: "", familyBW: "No", familySubsequentAttorney: "",
+                criminalADA: "", criminalCharges: "", criminalOffer: "", criminalDisposition: "No", criminalRelieved: "No", criminalReasonRelieved: "",
+                criminalSentence: "", criminalSentenceType: "", criminalConvictionOffense: "", criminalFine: "", criminalSurcharge: "",
+                criminalDnaFee: "", criminalFAndSDue: "", criminalBW: "No", criminalDiscovery: "No", criminalDiscoveryServedDate: "",
+                criminalCocServed: "No", criminalStatement: "No", criminalAdjournment: "", criminalBailStatusChange: "", bailAmount: "",
+                imhoffCaseLevel: "Misdemeanor", imhoffAppearanceType: "", winMotionOrTrial: "No",
+                followUpTask: ["", "", ""], followUpAssignedTo: ["", "", ""], followUpDue: ["", "", ""],
+                detailedNotes: "", commonMotion: "No", commonDraftOrder: "No",
+                nextAppearanceDateTime: "", nextAppearanceReason: "",
+                submittedToZapier: false
+            };
+        }
+
+        function getFormData(isForZapier = false) {
+            const data = {};
+            const formData = new FormData(formEl);
+            
+            for (const [key, value] of formData.entries()) {
+                if (!key.startsWith('familyOpposingCounsel') && !key.startsWith('familyOtherCounsel') && !key.startsWith('familyAFC') && !key.startsWith('followUp')) {
+                    data[key] = value;
+                }
+            }
+
+            const multiInputFields = ['familyOpposingCounsel', 'familyOtherCounsel', 'familyAFC', 'followUpTask', 'followUpDue', 'followUpAssignedTo'];
+            multiInputFields.forEach(fieldName => {
+                const inputs = Array.from(formEl.querySelectorAll(`[name="${fieldName}"]`));
+                const values = inputs.map(input => input.value).filter(val => val.trim() !== '');
+                
+                if (isForZapier) {
+                    data[fieldName] = values.join(', ');
+                } else {
+                    data[fieldName] = values.length > 0 ? values : [""];
+                }
+            });
+
+            if (isForZapier) {
+                formEl.querySelectorAll('select').forEach(select => {
+                    if (!data.hasOwnProperty(select.name)) {
+                        data[select.name] = select.value;
+                    }
+                });
+            }
+            return data;
+        }
+
+        // --- Tab and Form UI Management ---
+        function renderAllTabs() {
+            const fragment = document.createDocumentFragment();
+            const noteIds = Object.keys(localNotesData);
+            
+            if (noteIds.length > 0) {
+                noteIds.forEach(id => {
+                    const note = localNotesData[id];
+                    fragment.appendChild(createTabElement(id, note));
+                });
+                tabDiv.innerHTML = '';
+                tabDiv.appendChild(fragment);
+                noTabsMsgSpan.classList.add('hidden');
+                
+                const lastActive = localStorage.getItem('lastActiveTabId');
+                activateTab(lastActive && localNotesData[lastActive] ? lastActive : noteIds[0]);
+            } else {
+                tabDiv.innerHTML = '';
+                tabDiv.appendChild(noTabsMsgSpan);
+                noTabsMsgSpan.classList.remove('hidden');
+                activeFormDiv.classList.add('hidden');
+                noActiveMsgDiv.classList.remove('hidden');
+            }
+        }
+        
+        function createTabElement(tabId, noteData) {
+            const tab = document.createElement('div');
+            tab.className = 'tab p-3 border-r border-slate-300 whitespace-nowrap text-sm hover:bg-indigo-100 transition-colors duration-150';
+            tab.dataset.tabId = tabId;
+            updateTabTitle(tab);
+            tab.addEventListener('click', () => activateTab(tabId));
+            return tab;
+        }
+
+        function updateTabTitle(tabOrId) {
+             const tab = typeof tabOrId === 'string' ? tabDiv.querySelector(`[data-tab-id="${tabOrId}"]`) : tabOrId;
+             if (!tab) return;
+            
+             const noteData = localNotesData[tab.dataset.tabId] || {};
+             const name = noteData.clientName;
+             const type = noteData.caseType;
+             const desc = noteData.matterDescription;
+
+             const dateForTitle = noteData.noteDate ? new Date(noteData.noteDate + 'T00:00:00') : new Date();
+             const datePart = ` (${dateForTitle.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit'})})`;
+             
+             const typePrefix = type ? type.charAt(0).toUpperCase() + ": " : "";
+             
+             let fullTitle = name || "New Sheet";
+             if (name) {
+                 fullTitle = typePrefix + name;
+                 if (desc) {
+                     fullTitle += `: ${desc}`;
+                 }
+             }
+             
+             fullTitle += datePart;
+            
+             tab.textContent = fullTitle.length > 40 ? fullTitle.substring(0, 37) + "..." : fullTitle;
+             tab.title = fullTitle;
+        }
+
+
+        addNewBtn.addEventListener('click', () => {
+            const newId = `sheet_${Date.now()}`;
+            localNotesData[newId] = getNewSheetData();
+            saveNotesToLocalStorage();
+            renderAllTabs();
+            activateTab(newId);
+            formEl.elements.judgeName.focus();
+        });
+
+        function activateTab(tabId) {
+            if (!tabId || !localNotesData[tabId]) {
+                 const noteIds = Object.keys(localNotesData);
+                 if (noteIds.length > 0) {
+                     activateTab(noteIds[0]);
+                 } else {
+                     currentActiveTabId = null;
+                     activeFormDiv.classList.add('hidden');
+                     noActiveMsgDiv.classList.remove('hidden');
+                     noTabsMsgSpan.classList.remove('hidden');
+                 }
+                 return;
+            }
+
+            currentActiveTabId = tabId;
+            localStorage.setItem('lastActiveTabId', tabId);
+
+            Array.from(tabDiv.children).forEach(t => t.classList?.toggle('active', t.dataset?.tabId === tabId));
+            
+            populateForm(localNotesData[tabId]);
+            activeFormDiv.classList.remove('hidden');
+            noActiveMsgDiv.classList.add('hidden');
+        }
+        
+        function populateForm(data) {
+            formEl.reset();
+            if (!data) return;
+
+            Object.keys(data).forEach(key => {
+                const elements = formEl.elements[key];
+                const value = data[key];
+                
+                if (key === 'familyOpposingCounsel') {
+                    renderDynamicInputs(el('opposing-counsel-container'), key, value);
+                } else if (key === 'familyOtherCounsel') {
+                    renderDynamicInputs(el('other-counsel-container'), key, value);
+                } else if (key === 'familyAFC') {
+                    renderDynamicInputs(el('afc-container'), key, value);
+                } else if (elements instanceof NodeList && !elements.type) { 
+                    elements.forEach(el => {
+                        if(el.type === 'text' || el.type === 'date') {
+                             if(Array.isArray(value)) el.value = value.shift() || "";
+                        } else if (el.value === value) {
+                            el.checked = true;
+                        }
+                    });
+                } else if (elements) {
+                    elements.value = value || "";
+                }
+            });
+
+            updateAllConditionalVisibility();
+        }
+        
+        function renderDynamicInputs(container, name, values) {
+            if (!container) return; 
+            container.innerHTML = ''; 
+            const valuesArray = Array.isArray(values) && values.length > 0 ? values : [""];
+
+            valuesArray.forEach((value, index) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center mt-2";
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = name;
+                input.className = "w-full p-2 border rounded";
+                input.value = value;
+                div.appendChild(input);
+
+                if (index === 0) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'add-btn';
+                    button.textContent = '+';
+                    button.dataset.target = container.id;
+                    button.dataset.name = name;
+                    div.appendChild(button);
+                }
+                container.appendChild(div);
+            });
+        }
+        
+        // --- Form Interaction & Dynamic Fields ---
+        formEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('add-btn')) {
+                const targetId = e.target.dataset.target;
+                const name = e.target.dataset.name;
+                const container = el(targetId);
+
+                const div = document.createElement('div');
+                div.className = 'flex items-center mt-2';
+                div.innerHTML = `<input type="text" name="${name}" class="w-full p-2 border rounded">`;
+                container.appendChild(div);
+            }
+        });
+        
+        function updateAllConditionalVisibility() {
+            const caseType = formEl.elements.caseType.value;
+            const isFamily = caseType === 'family';
+            const isCriminal = caseType === 'criminal';
+
+            // Main sections
+            el('familySpecificFields').classList.toggle('hidden', !isFamily);
+            el('criminalSpecificFields').classList.toggle('hidden', !isCriminal);
+            
+            // Sub-sections
+            el('imhoff-case-field').classList.toggle('hidden', !isCriminal);
+            el('imhoff-details').classList.toggle('hidden', !(isCriminal && el('imhoffCase').value === 'Yes'));
+            el('criminal-discovery-details').classList.toggle('hidden', !(isCriminal && el('criminalDiscovery').value === 'Yes'));
+
+            const criminalDispo = isCriminal && el('criminalDisposition').value === 'Yes';
+            el('criminal-disposition-details').classList.toggle('hidden', !criminalDispo);
+            el('adjournment-container').classList.toggle('hidden', criminalDispo);
+            
+            const criminalRelieved = criminalDispo && el('criminalRelieved').value === 'Yes';
+            el('criminal-relieved-details').classList.toggle('hidden', !criminalRelieved);
+            el('criminal-sentence-details').classList.toggle('hidden', !(criminalDispo && !criminalRelieved));
+
+            const familyDispo = isFamily && el('familyDisposition').value === 'Yes';
+            const familyRelieved = isFamily && el('familyRelieved').value === 'Yes';
+            el('family-disposition-details').classList.toggle('hidden', !familyDispo);
+            el('family-relieved-details').classList.toggle('hidden', !familyDispo || !familyRelieved);
+
+            const showNextAppearance = (isFamily && !familyDispo) || (isCriminal && !criminalDispo);
+            el('next-appearance-section').classList.toggle('hidden', !showNextAppearance);
+        }
+
+        formEl.addEventListener('change', updateAllConditionalVisibility);
+        
+        let debounceTimer;
+        formEl.addEventListener('input', () => {
+            if (!currentActiveTabId) return;
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const data = getFormData();
+                localNotesData[currentActiveTabId] = { ...localNotesData[currentActiveTabId], ...data };
+                saveNotesToLocalStorage();
+                updateTabTitle(tabDiv.querySelector(`[data-tab-id="${currentActiveTabId}"]`));
+                showToast('Auto-saved!', 'info');
+            }, 1000);
+        });
+
+        clearFormButton.addEventListener('click', () => {
+            if (!currentActiveTabId) return;
+            const newNote = getNewSheetData();
+            localNotesData[currentActiveTabId] = newNote;
+            populateForm(newNote);
+            saveNotesToLocalStorage();
+            updateTabTitle(currentActiveTabId);
+            showToast('Form cleared.', 'info');
+        });
+
+        closeNoteBtn.addEventListener('click', () => {
+             if (!currentActiveTabId) return;
+             delete localNotesData[currentActiveTabId];
+             saveNotesToLocalStorage();
+             currentActiveTabId = null;
+             renderAllTabs();
+             showToast('Sheet deleted.', 'info');
+        });
+
+        // --- SUBMISSION LOGIC ---
+        function clearValidationErrors() {
+            formEl.querySelectorAll('label.error').forEach(label => {
+                label.classList.remove('error');
+            });
+        }
+
+        function highlightErrors(invalidFields) {
+            invalidFields.forEach(fieldName => {
+                const label = formEl.querySelector(`label[for="${fieldName}"]`);
+                if (label) {
+                    label.classList.add('error');
+                }
+            });
+        }
+        
+        function validateForm(data) {
+            const invalidFields = [];
+            const check = (fieldName) => {
+                const value = data[fieldName];
+                if (value === undefined || value === null || String(value).trim() === '') {
+                     invalidFields.push(fieldName);
+                }
+            };
+
+            ['clientName', 'judgeName', 'caseType', 'courtName', 'durationHours'].forEach(check);
+
+            const isFamily = data.caseType === 'family';
+            const isCriminal = data.caseType === 'criminal';
+
+            if (isFamily) {
+                if (data.familyDisposition === 'Yes' && data.familyRelieved === 'No') {
+                    check('familyDispoMethod');
+                    check('familyPetition');
+                }
+                if (data.familyRelieved === 'Yes') {
+                    check('familyReasonRelieved');
+                }
+                if (data.familyDisposition === 'No') {
+                    check('nextAppearanceDateTime');
+                    check('nextAppearanceReason');
+                }
+            }
+
+            if (isCriminal) {
+                if (data.criminalDisposition === 'Yes' && data.criminalRelieved === 'No') {
+                    ['amountOfSentence', 'measurementOfSentence', 'criminalSentence', 'criminalConvictionOffense'].forEach(check);
+                }
+                if (data.criminalRelieved === 'Yes') {
+                    check('criminalReasonRelieved');
+                }
+                if (data.criminalDisposition === 'No') {
+                    check('nextAppearanceDateTime');
+                    check('nextAppearanceReason');
+                }
+            }
+            
+            return {
+                isValid: invalidFields.length === 0,
+                invalidFields: invalidFields
+            };
+        }
+
+        submitToZapierBtn.addEventListener('click', async () => {
+            if (!currentActiveTabId) { showToast('No active sheet to submit.', 'error'); return; }
+            
+            clearValidationErrors();
+
+            const currentNote = localNotesData[currentActiveTabId];
+            if (currentNote.submittedToZapier) {
+                showToast('Results were already submitted for this case.', 'info');
+                return;
+            }
+
+            const data = getFormData(true);
+            const validationResult = validateForm(data);
+
+            if (!validationResult.isValid) {
+                highlightErrors(validationResult.invalidFields);
+                showToast('Missing info, please fill out then resubmit.', 'error');
+                return;
+            }
+
+            const webhookUrl = data.caseType === 'family' 
+                ? localStorage.getItem('zapierWebhookUrl_family') 
+                : localStorage.getItem('zapierWebhookUrl_criminal');
+
+            if (!webhookUrl) { showToast(`Webhook URL for ${data.caseType} not set.`, 'error'); return; }
+
+            showToast('Submitting to Zapier...', 'info');
+            try {
+                await fetch(webhookUrl, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                
+                localNotesData[currentActiveTabId].submittedToZapier = true;
+                saveNotesToLocalStorage();
+                showToast('Submitted to Zapier successfully!', 'success');
+
+            } catch (error) {
+                showToast('Error submitting to Zapier. Check console.', 'error');
+                console.error('Zapier submission error:', error);
+            }
+        });
+
+        exportToPdfBtn.addEventListener('click', async () => {
+            if (!currentActiveTabId) { showToast('No sheet to export.', 'error'); return; }
+            showToast('Generating PDF...', 'info');
+            
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            const data = getFormData();
+
+            pdf.text("Daily Court Sheet", 10, 10);
+            pdf.text(`Client: ${data.clientName || 'N/A'}`, 10, 20);
+            pdf.text(`Date: ${data.noteDate || 'N/A'}`, 10, 30);
+            pdf.text("Notes:", 10, 40);
+            pdf.text(data.detailedNotes || "No notes.", 10, 50, { maxWidth: 180 });
+
+            pdf.save(`CourtSheet_${data.clientName || 'Untitled'}.pdf`);
+            showToast('PDF exported!', 'success');
+        });
+
+        // --- Initial Load ---
+        loadAndApplyLogo();
+        loadWebhookUrlsToModal();
+        loadNotesFromLocalStorage();
+    };
+    </script>
+</body>
+</html>
