@@ -127,7 +127,6 @@
 
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
-        <!-- FIX: Added a settings button to the login screen -->
         <div class="absolute top-4 right-4">
             <button id="loginSettingsBtn" class="p-2 rounded-full hover:bg-gray-200" title="Settings">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -440,7 +439,7 @@
         // --- Element Selection ---
         const el = (id) => document.getElementById(id);
         const loginScreen = el('login-screen');
-        const loginSettingsBtn = el('loginSettingsBtn'); // FIX: Select the new settings button
+        const loginSettingsBtn = el('loginSettingsBtn');
         const appContainer = el('app-container');
         const signInBtn = el('signInBtn');
         const signOutBtn = el('signOutBtn');
@@ -493,8 +492,8 @@
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
+                setTimeout(() => toast.remove(), 5000); // Increased duration for error messages
+            }, 5000);
         }
 
         function getFormattedDate(dateObj = new Date()) {
@@ -551,14 +550,12 @@
             firebaseConfigInput.value = localStorage.getItem(FIREBASE_CONFIG_KEY) || '';
         }
 
-        // FIX: Create a reusable function to open the settings modal
         function openSettingsModal() {
             loadSettingsToModal();
             loadAndApplyLogo();
             webhookSettingsModalOverlay.classList.add('active');
         }
 
-        // FIX: Add listeners to both settings buttons
         settingsBtn.addEventListener('click', openSettingsModal);
         loginSettingsBtn.addEventListener('click', openSettingsModal);
 
@@ -579,7 +576,6 @@
 
             webhookSettingsModalOverlay.classList.remove('active');
             
-            // FIX: If firebase config changed, reload the page to re-initialize
             if (oldConfig !== newConfig && newConfig) {
                 showToast('Firebase settings saved! The page will now refresh.', 'success');
                 setTimeout(() => {
@@ -1386,16 +1382,28 @@
             });
         }
         
+        // FIX: Update the sign-in function to provide better error feedback.
         signInBtn.addEventListener('click', () => {
             if (!auth) {
                 showToast("Firebase is not configured. Please add your config in Settings.", 'error');
                 return;
             }
             const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch(error => {
-                console.error("Google Sign-In failed:", error);
-                showToast("Could not sign in with Google.", "error");
-            });
+            signInWithPopup(auth, provider)
+                .then((result) => {
+                    // This gives you a Google Access Token. You can use it to access the Google API.
+                    const credential = GoogleAuthProvider.credentialFromResult(result);
+                    const token = credential.accessToken;
+                    // The signed-in user info.
+                    const user = result.user;
+                    showToast(`Welcome, ${user.displayName}!`, 'success');
+                })
+                .catch((error) => {
+                    // Handle Errors here.
+                    console.error("Google Sign-In failed:", error);
+                    // Display the specific error message to the user for better debugging.
+                    showToast(`Login Failed: ${error.code}`, 'error');
+                });
         });
         
         userInfoDiv.addEventListener('click', () => {
