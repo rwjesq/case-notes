@@ -110,6 +110,17 @@
         .modal-close-btn:hover {
             color: #1f2937; /* gray-800 */
         }
+        .archive-item {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+        }
+        .archive-item:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .archive-item:last-child {
+            border-bottom: none;
+        }
         .add-btn, .remove-btn {
             background-color: #34d399; color: white;
             border-radius: 9999px; width: 24px; height: 24px;
@@ -143,10 +154,16 @@
             </button>
         </header>
 
-        <div class="mb-4 flex justify-between items-center">
+        <div class="mb-4 flex space-x-2">
             <button id="addNewNoteBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                 New Court Sheet
+            </button>
+            <button id="viewOldSheetsBtn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                View Old Sheets
             </button>
         </div>
 
@@ -374,6 +391,15 @@
              <p class="text-xs text-slate-500 mt-3">Settings are saved locally in your browser.</p>
         </div>
     </div>
+    
+    <div id="archiveModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <button id="archiveModalCloseBtn" class="modal-close-btn">&times;</button>
+            <h3 class="text-xl font-semibold mb-4">Archived Sheets</h3>
+            <div id="archivedSheetsContainer" class="mb-4 max-h-60 overflow-y-auto">
+                </div>
+        </div>
+    </div>
 
     <div id="toast-container"></div>
 
@@ -390,6 +416,10 @@
         const webhookSettingsModalOverlay = el('webhookSettingsModalOverlay');
         const webhookSettingsModalCloseBtn = el('webhookSettingsModalCloseBtn');
         const addNewBtn = el('addNewNoteBtn');
+        const viewOldSheetsBtn = el('viewOldSheetsBtn');
+        const archiveModalOverlay = el('archiveModalOverlay');
+        const archiveModalCloseBtn = el('archiveModalCloseBtn');
+        const archivedSheetsContainer = el('archivedSheetsContainer');
         const tabDiv = el('tab-container');
         const activeFormDiv = el('activeFormContainer');
         const noActiveMsgDiv = el('noActiveFormMessage');
@@ -412,6 +442,7 @@
         let currentActiveTabId = null;
         let localNotesData = {};
         const NOTES_KEY = 'courtSheetNotes';
+        const ARCHIVED_NOTES_KEY = 'archivedCourtSheetNotes';
         const LOGO_KEY = 'appLogo';
         let poller = { intervalId: null, timeoutId: null };
         let matterSearchDebounceTimer;
@@ -697,7 +728,6 @@
                 }
             });
 
-            // Handle Follow-up and Extra Dates for Zapier
             if (isForZapier) {
                 const followUpTasks = Array.from(formEl.querySelectorAll('[name="followUpTask"]'));
                 const followUpDues = Array.from(formEl.querySelectorAll('[name="followUpDue"]'));
@@ -721,7 +751,6 @@
                     data[`Ex Date Reason ${index + 1}`] = extraDateReasonInputs[index].value || "";
                 });
             } else {
-                // Logic for local saving
                  const followUpTasks = Array.from(formEl.querySelectorAll('[name="followUpTask"]')).map(i => i.value);
                  const followUpDues = Array.from(formEl.querySelectorAll('[name="followUpDue"]')).map(i => i.value);
                  const followUpAssigneds = Array.from(formEl.querySelectorAll('[name="followUpAssignedTo"]')).map(i => i.value);
@@ -858,7 +887,8 @@
                     renderDynamicInputs(el('afc-container'), key, value);
                 } else if (key === 'extraDates' || key === 'extraDateReasons') {
                     renderExtraDates(data.extraDates, data.extraDateReasons);
-                } else if (key.startsWith('followUp') && Array.isArray(value)) {
+                }
+                else if (key.startsWith('followUp') && Array.isArray(value)) {
                      const nodeList = formEl.elements[key];
                      if(nodeList) {
                          value.forEach((v, i) => {
@@ -982,12 +1012,70 @@
 
         closeNoteBtn.addEventListener('click', () => {
              if (!currentActiveTabId) return;
+             const closedNote = localNotesData[currentActiveTabId];
+             let archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
+             archive[currentActiveTabId] = closedNote;
+             localStorage.setItem(ARCHIVED_NOTES_KEY, JSON.stringify(archive));
+             
              delete localNotesData[currentActiveTabId];
              saveNotesToLocalStorage();
              currentActiveTabId = null;
              renderAllTabs();
-             showToast('Sheet deleted.', 'info');
+             showToast('Sheet archived.', 'info');
         });
+
+        // --- Archive Logic ---
+        viewOldSheetsBtn.addEventListener('click', () => {
+            renderArchivedSheets();
+            archiveModalOverlay.classList.add('active');
+        });
+
+        archiveModalCloseBtn.addEventListener('click', () => archiveModalOverlay.classList.remove('active'));
+        archiveModalOverlay.addEventListener('click', (e) => {
+            if (e.target === archiveModalOverlay) archiveModalOverlay.classList.remove('active');
+        });
+
+        function renderArchivedSheets() {
+            const archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
+            archivedSheetsContainer.innerHTML = '';
+            
+            const sortedKeys = Object.keys(archive).sort((a, b) => new Date(archive[b].noteDate) - new Date(archive[a].noteDate));
+
+            if (sortedKeys.length === 0) {
+                archivedSheetsContainer.innerHTML = '<p class="text-slate-500">No archived sheets.</p>';
+                return;
+            }
+
+            sortedKeys.forEach(key => {
+                const note = archive[key];
+                const item = document.createElement('div');
+                item.className = 'archive-item';
+                item.dataset.archiveId = key;
+                item.innerHTML = `<p class="font-semibold">${note.clientName || 'Untitled'}</p><p class="text-sm text-slate-600">${note.noteDate}</p>`;
+                item.addEventListener('click', () => restoreSheet(key));
+                archivedSheetsContainer.appendChild(item);
+            });
+        }
+        
+        function restoreSheet(archiveId) {
+            let archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
+            const noteToRestore = archive[archiveId];
+            
+            if (noteToRestore) {
+                delete archive[archiveId];
+                localStorage.setItem(ARCHIVED_NOTES_KEY, JSON.stringify(archive));
+
+                const newId = `sheet_${Date.now()}`;
+                noteToRestore.submittedToZapier = false; // Allow re-submission
+                localNotesData[newId] = noteToRestore;
+                saveNotesToLocalStorage();
+                
+                renderAllTabs();
+                activateTab(newId);
+                archiveModalOverlay.classList.remove('active');
+                showToast('Sheet restored.', 'success');
+            }
+        }
 
         // --- SUBMISSION LOGIC ---
         function clearValidationErrors() {
