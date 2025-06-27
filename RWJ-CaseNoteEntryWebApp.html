@@ -10,6 +10,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* Using Google Fonts for a cleaner look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
         body { font-family: 'Inter', sans-serif; }
         .tab { cursor: pointer; }
         .tab.active { border-bottom-width: 2px; border-color: #4F46E5; color: #4F46E5; font-weight: 600;}
@@ -37,7 +40,6 @@
             padding-bottom: 0.5rem;
             border-bottom: 1px solid #e5e7eb;
         }
-        /* Custom scrollbar for tab container */
         #tab-container::-webkit-scrollbar { height: 8px; }
         #tab-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         #tab-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
@@ -46,7 +48,7 @@
         .toast {
             position: fixed; bottom: 20px; right: 20px;
             padding: 12px 20px; border-radius: 8px; color: white;
-            font-size: 0.875rem; z-index: 1050; /* Ensure toast is above modal overlay */
+            font-size: 0.875rem; z-index: 1050; 
             opacity: 0;
             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
             transform: translateY(20px);
@@ -64,13 +66,9 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Modal Styles */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
@@ -94,33 +92,23 @@
             max-width: 500px;
             max-height: 80vh;
             overflow-y: auto;
-            position: relative; /* For close button positioning */
+            position: relative; 
         }
         .modal-close-btn {
             position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 1.8rem;
-            line-height: 1;
-            cursor: pointer;
-            color: #6b7280; /* gray-500 */
+            top: 10px; right: 15px;
+            background: none; border: none;
+            font-size: 1.8rem; line-height: 1;
+            cursor: pointer; color: #6b7280;
         }
-        .modal-close-btn:hover {
-            color: #1f2937; /* gray-800 */
-        }
+        .modal-close-btn:hover { color: #1f2937; }
         .archive-item {
             padding: 8px;
             border-bottom: 1px solid #e5e7eb;
             cursor: pointer;
         }
-        .archive-item:hover {
-            background-color: #f3f4f6; /* gray-100 */
-        }
-        .archive-item:last-child {
-            border-bottom: none;
-        }
+        .archive-item:hover { background-color: #f3f4f6; }
+        .archive-item:last-child { border-bottom: none; }
         .add-btn, .remove-btn {
             background-color: #34d399; color: white;
             border-radius: 9999px; width: 24px; height: 24px;
@@ -131,48 +119,75 @@
         .add-btn:hover { background-color: #10b981; }
         .remove-btn { background-color: #ef4444; }
         .remove-btn:hover { background-color: #dc2626; }
-        label.error {
-            color: #dc3545; /* Red for errors */
-        }
-        .border-error {
-            border-color: #dc3545 !important;
-        }
+        label.error { color: #dc3545; }
+        .border-error { border-color: #dc3545 !important; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
 
-    <div class="container mx-auto p-4 max-w-6xl">
-        <header class="mb-6 text-center relative">
-            <h1 class="text-3xl font-bold text-indigo-700">Daily Court Sheet</h1>
-            <p class="text-sm text-slate-500">Manage your court appearances and case notes.</p>
-            <img id="headerLogo" src="https://placehold.co/240x60/1e3a8a/ffffff?text=Your+Logo" alt="Logo" class="mx-auto my-4 h-12 hidden">
-            <button id="settingsBtn" class="absolute top-0 right-0 p-2 text-slate-600 hover:text-indigo-700 focus:outline-none" title="Webhook Settings">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+        <!-- FIX: Added a settings button to the login screen -->
+        <div class="absolute top-4 right-4">
+            <button id="loginSettingsBtn" class="p-2 rounded-full hover:bg-gray-200" title="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
             </button>
-        </header>
-
-        <div class="mb-4 flex space-x-2">
-            <button id="addNewNoteBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                New Court Sheet
-            </button>
-            <button id="viewOldSheetsBtn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                </svg>
-                View Old Sheets
+        </div>
+        <div class="text-center p-8 bg-white rounded-lg shadow-xl relative">
+            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Daily Court Sheet</h1>
+            <p class="text-slate-600 mb-6">Please sign in to continue.</p>
+            <button id="signInBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48"><g><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></g></svg>
+                Sign in with Google
             </button>
         </div>
+    </div>
+    
+    <!-- Main Application Container -->
+    <div id="app-container" class="hidden">
+        <div class="container mx-auto p-4 max-w-6xl">
+            <header class="mb-6 text-center relative">
+                <h1 class="text-3xl font-bold text-indigo-700">Daily Court Sheet</h1>
+                <p class="text-sm text-slate-500">Manage your court appearances and case notes.</p>
+                <img id="headerLogo" src="https://placehold.co/240x60/1e3a8a/ffffff?text=Your+Logo" alt="Logo" class="mx-auto my-4 h-12 hidden">
+                <div id="user-profile" class="absolute top-0 right-0 text-right">
+                    <div id="userInfo" class="flex items-center space-x-2 cursor-pointer">
+                        <span id="userName" class="text-sm font-medium text-slate-700"></span>
+                        <img id="userPhoto" class="h-8 w-8 rounded-full">
+                    </div>
+                    <button id="signOutBtn" class="hidden mt-2 px-3 py-1 bg-red-100 text-red-700 text-xs rounded-md hover:bg-red-200">Sign Out</button>
+                </div>
+            </header>
 
-        <div id="tab-container" class="flex overflow-x-auto border-b border-slate-300 mb-1 bg-white rounded-t-lg shadow scrollbar-thin scrollbar-thumb-slate-400 scrollbar-track-slate-200 py-1">
-            <span id="noTabsMessage" class="p-3 text-slate-500 italic">No open sheets. Click "New Court Sheet".</span>
-        </div>
+            <div class="mb-4 flex space-x-2">
+                <button id="addNewNoteBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    New Court Sheet
+                </button>
+                <button id="viewOldSheetsBtn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    View Old Sheets
+                </button>
+                <button id="settingsBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                </button>
+            </div>
 
-        <div id="form-area" class="bg-white p-6 rounded-b-lg shadow">
-            <div id="activeFormContainer" class="hidden">
+            <div id="tab-container" class="flex overflow-x-auto border-b border-slate-300 mb-1 bg-white rounded-t-lg shadow scrollbar-thin scrollbar-thumb-slate-400 scrollbar-track-slate-200 py-1">
+                <span id="noTabsMessage" class="p-3 text-slate-500 italic">No open sheets. Click "New Court Sheet".</span>
+            </div>
+
+            <div id="form-area" class="bg-white p-6 rounded-b-lg shadow">
+                <div id="activeFormContainer" class="hidden">
                 <form id="caseNoteForm" class="space-y-6">
                     <input type="hidden" id="matterDescription" name="matterDescription">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -195,12 +210,12 @@
                             </div>
                         </div>
                     </div>
-                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                         <div><label for="durationHours" class="block text-sm">Time in Court (Hrs):</label><input type="number" id="durationHours" name="durationHours" step="0.1" min="0" class="mt-1 w-full p-2 border rounded" placeholder="e.g., 2.5"></div>
                         <div><label class="block text-sm">Client Present?</label><select id="clientPresent" name="clientPresent" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                         <div><label class="block text-sm">Incarcerated?</label><select id="clientIncarcerated" name="clientIncarcerated" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                         <div><label class="block text-sm">Virtual?</label><select id="clientVirtual" name="clientVirtual" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
-                         <div id="imhoff-case-field" class="hidden"><label class="block text-sm">Imhoff Case?:</label><select id="imhoffCase" name="imhoffCase" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
+                            <div id="imhoff-case-field" class="hidden"><label class="block text-sm">Imhoff Case?:</label><select id="imhoffCase" name="imhoffCase" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                     </div>
 
                     <div id="familySpecificFields" class="hidden form-section">
@@ -211,22 +226,22 @@
                                 <div id="opposing-counsel-container" class="space-y-2">
                                     </div>
                             </div>
-                             <div>
+                                <div>
                                 <label class="block text-sm">Other Counsel(s):</label>
                                 <div id="other-counsel-container" class="space-y-2">
                                     </div>
                             </div>
-                             <div>
+                                <div>
                                 <label class="block text-sm">AFC(s):</label>
                                 <div id="afc-container" class="space-y-2">
-                                     </div>
+                                        </div>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                                 <div><label class="block text-sm">Financials?</label><select id="familyFinancials" name="familyFinancials" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                                 <div><label class="block text-sm">Disposition?</label><select id="familyDisposition" name="familyDisposition" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                                 <div id="family-trial-wrapper" class="hidden"><label class="block text-sm">Trial?</label><select id="familyTrial" name="familyTrial" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                             </div>
-                             <div id="family-disposition-details" class="hidden space-y-4">
+                                <div id="family-disposition-details" class="hidden space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div><label for="familyDispoMethod" class="block text-sm">Dispo Method:</label><select id="familyDispoMethod" name="familyDispoMethod" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Hearing</option><option>Default</option><option>Stipulation</option><option>Consent (Admission)</option><option>Consent (No Admission)</option><option>On Motion</option></select></div>
                                     <div><label for="familyPetition" class="block text-sm">Petition:</label><select id="familyPetition" name="familyPetition" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Dismissed</option><option>Modified</option><option>Other</option><option>Stipulation</option><option>Sustained</option><option>Withdrawn</option></select></div>
@@ -235,11 +250,11 @@
                                     <div><label class="block text-sm">Relieved?</label><select id="familyRelieved" name="familyRelieved" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                                     <div><label class="block text-sm">BW?:</label><select id="familyBW" name="familyBW" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                                 </div>
-                                 <div id="family-relieved-details" class="hidden space-y-4">
+                                    <div id="family-relieved-details" class="hidden space-y-4">
                                     <div><label for="familyReasonRelieved" class="block text-sm">Reason Relieved:</label><input type="text" id="familyReasonRelieved" name="familyReasonRelieved" class="mt-1 w-full p-2 border rounded"></div>
                                     <div><label for="familySubsequentAttorney" class="block text-sm">Subsequent Attorney:</label><input type="text" id="familySubsequentAttorney" name="familySubsequentAttorney" class="mt-1 w-full p-2 border rounded"></div>
                                 </div>
-                             </div>
+                                </div>
                         </div>
                     </div>
 
@@ -270,10 +285,10 @@
                                     <div><label for="criminalSubsequentAttorney" class="block text-sm">Subsequent Attorney:</label><input type="text" id="criminalSubsequentAttorney" name="criminalSubsequentAttorney" class="mt-1 w-full p-2 border rounded"></div>
                                 </div>
                                 <div id="criminal-sentence-details" class="space-y-4">
-                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div><label for="amountOfSentence" class="block text-sm">Amount of Sentence:</label><input type="number" id="amountOfSentence" name="amountOfSentence" class="mt-1 w-full p-2 border rounded"></div>
-                                        <div><label for="measurementOfSentence" class="block text-sm">Measurement of Sentence:</label><select id="measurementOfSentence" name="measurementOfSentence" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Hour(s)</option><option>Day(s)</option><option>Week(s)</option><option>Month(s)</option><option>Year(s)</option><option>Dollar(s)</option></select></div>
-                                    </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label for="amountOfSentence" class="block text-sm">Amount of Sentence:</label><input type="number" id="amountOfSentence" name="amountOfSentence" class="mt-1 w-full p-2 border rounded"></div>
+                                            <div><label for="measurementOfSentence" class="block text-sm">Measurement of Sentence:</label><select id="measurementOfSentence" name="measurementOfSentence" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>Hour(s)</option><option>Day(s)</option><option>Week(s)</option><option>Month(s)</option><option>Year(s)</option><option>Dollar(s)</option></select></div>
+                                        </div>
                                     <div><label for="criminalSentence" class="block text-sm">Sentence:</label><select id="criminalSentence" name="criminalSentence" class="mt-1 w-full p-2 border rounded"><option value="">-- Select --</option><option>CD</option><option>ACD</option><option>Fine</option><option>UD</option><option>Dismissed</option><option>Dismissed in Satisfaction</option><option>Probation</option><option>Jail (local)</option><option>Jail (State)</option></select></div>
                                     <div><label for="criminalSentenceType" class="block text-sm">Sentence Type:</label><select id="criminalSentenceType" name="criminalSentenceType" class="mt-1 w-full p-2 border rounded"><option>2nd Felony Offender</option><option>2nd Violent Felony Offender</option><option>Juvenile Offender</option><option>Persistent Felony Offender</option><option>Persistent Violent Felony Offender</option><option>Youthful Offender</option></select></div>
                                     <div><label for="criminalConvictionOffense" class="block text-sm">Conviction Offense:</label><input type="text" id="criminalConvictionOffense" name="criminalConvictionOffense" class="mt-1 w-full p-2 border rounded"></div>
@@ -285,8 +300,8 @@
                                     </div>
                                 </div>
                             </div>
-                             <div id="imhoff-details" class="hidden space-y-4 form-section">
-                                 <h4 class="form-section-title text-base">Imhoff Case Details</h4>
+                                <div id="imhoff-details" class="hidden space-y-4 form-section">
+                                    <h4 class="form-section-title text-base">Imhoff Case Details</h4>
                                 <div><label class="block text-sm">What level the case is:</label><select id="imhoffCaseLevel" name="imhoffCaseLevel" class="mt-1 w-full p-2 border rounded"><option>Misdemeanor</option><option>Felony</option><option>Federal</option></select></div>
                                 <div><label class="block text-sm">Imhoff Appearance Type:</label><select id="imhoffAppearanceType" name="imhoffAppearanceType" class="mt-1 w-full p-2 border rounded"><option value="" disabled selected>-- Select --</option><option>Motion</option><option>Trial</option></select></div>
                                 <div><label class="block text-sm">Win Motion or Trial?</label><select id="winMotionOrTrial" name="winMotionOrTrial" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
@@ -299,10 +314,10 @@
                     </div>
                     
                     <div class="form-section">
-                         <h3 class="form-section-title">Follow-up & Notes</h3>
+                            <h3 class="form-section-title">Follow-up & Notes</h3>
                         <div class="space-y-4">
                             <div><label for="detailedNotes" class="block text-sm">Case Notes:</label><textarea id="detailedNotes" name="detailedNotes" rows="5" class="mt-1 w-full p-2 border rounded"></textarea></div>
-                             <div>
+                                <div>
                                 <div class="grid grid-cols-6 gap-2 mb-2 items-end">
                                     <label class="block text-sm col-span-3">Follow up tasks:</label>
                                     <label class="block text-sm col-span-2">Due Date:</label>
@@ -314,12 +329,12 @@
                                         <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
                                         <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
                                     </div>
-                                     <div class="grid grid-cols-6 gap-2 items-center">
+                                    <div class="grid grid-cols-6 gap-2 items-center">
                                         <input type="text" name="followUpTask" placeholder="Task #2" class="col-span-3 p-2 border rounded">
                                         <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
                                         <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
                                     </div>
-                                     <div class="grid grid-cols-6 gap-2 items-center">
+                                    <div class="grid grid-cols-6 gap-2 items-center">
                                         <input type="text" name="followUpTask" placeholder="Task #3" class="col-span-3 p-2 border rounded">
                                         <input type="date" name="followUpDue" class="col-span-2 p-2 border rounded">
                                         <input type="text" name="followUpAssignedTo" placeholder="Initials" maxlength="4" class="p-2 border rounded text-center">
@@ -344,7 +359,7 @@
                                     + Add Extra Date
                                 </button>
                             </div>
-                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                 <div><label class="block text-sm">Motion?</label><select id="commonMotion" name="commonMotion" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                                 <div><label class="block text-sm">Draft Order?</label><select id="commonDraftOrder" name="commonDraftOrder" class="mt-1 w-full p-2 border rounded"><option>No</option><option>Yes</option></select></div>
                             </div>
@@ -358,10 +373,11 @@
                         <button type="button" id="closeNoteBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm ml-auto">Close Sheet</button>
                     </div>
                 </form>
-            </div>
-            <div id="noActiveFormMessage" class="text-center py-10">
-                <p class="text-slate-500 text-lg">Select a sheet to view or create a new one.</p>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-300 mx-auto mt-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                </div>
+                <div id="noActiveFormMessage" class="text-center py-10">
+                    <p class="text-slate-500 text-lg">Select a sheet to view or create a new one.</p>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-300 mx-auto mt-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                </div>
             </div>
         </div>
     </div>
@@ -369,26 +385,30 @@
     <div id="webhookSettingsModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <button id="webhookSettingsModalCloseBtn" class="modal-close-btn">&times;</button>
-            <h3 class="text-xl font-semibold mb-4">Webhook Settings</h3>
+            <h3 class="text-xl font-semibold mb-4">Webhook & Firebase Settings</h3>
             <div class="space-y-3">
                 <div><label for="zapierWebhookUrl_criminal" class="block text-sm font-medium text-slate-700 mb-1">Criminal Cases Submit URL:</label><input type="text" id="zapierWebhookUrl_criminal" placeholder="Criminal Cases Webhook URL" class="w-full p-2 border rounded-md"></div>
                 <div><label for="zapierWebhookUrl_family" class="block text-sm font-medium text-slate-700 mb-1">Family Court Cases Submit URL:</label><input type="text" id="zapierWebhookUrl_family" placeholder="Family Court Cases Webhook URL" class="w-full p-2 border rounded-md"></div>
                 <div><label for="zapierWebhookUrl_clioSearch" class="block text-sm font-medium text-slate-700 mb-1">Clio Search Init URL (Zapier):</label><input type="text" id="zapierWebhookUrl_clioSearch" placeholder="Clio Search Init Webhook URL" class="w-full p-2 border rounded-md"></div>
-                 <div><label for="googleSheetCsvUrl" class="block text-sm font-medium text-slate-700 mb-1">Google Sheet CSV URL:</label><input type="text" id="googleSheetCsvUrl" placeholder="Published Google Sheet CSV URL" class="w-full p-2 border rounded-md"></div>
-                 <div class="border-t pt-4 mt-2">
-                     <label for="logoUpload" class="block text-sm font-medium text-slate-700 mb-1">Upload Logo:</label>
-                     <input type="file" id="logoUpload" accept="image/png, image/jpeg, image/gif" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                     <div class="mt-4">
-                        <p class="text-sm font-medium text-slate-700">Logo Preview:</p>
-                        <img id="logoPreview" class="mt-2 h-16 border p-1 rounded" src="https://placehold.co/240x60/f0f0f0/cccccc?text=No+Logo">
-                     </div>
-                     <button type="button" id="removeLogoBtn" class="mt-2 px-3 py-1 bg-red-100 text-red-700 text-xs rounded-md hover:bg-red-200">Remove Logo</button>
-                 </div>
+                    <div><label for="googleSheetCsvUrl" class="block text-sm font-medium text-slate-700 mb-1">Google Sheet CSV URL:</label><input type="text" id="googleSheetCsvUrl" placeholder="Published Google Sheet CSV URL" class="w-full p-2 border rounded-md"></div>
+                    <div class="border-t pt-4 mt-2">
+                        <label for="logoUpload" class="block text-sm font-medium text-slate-700 mb-1">Upload Logo:</label>
+                        <input type="file" id="logoUpload" accept="image/png, image/jpeg, image/gif" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-slate-700">Logo Preview:</p>
+                            <img id="logoPreview" class="mt-2 h-16 border p-1 rounded" src="https://placehold.co/240x60/f0f0f0/cccccc?text=No+Logo">
+                        </div>
+                        <button type="button" id="removeLogoBtn" class="mt-2 px-3 py-1 bg-red-100 text-red-700 text-xs rounded-md hover:bg-red-200">Remove Logo</button>
+                    </div>
+                    <div class="border-t pt-4 mt-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Firebase Configuration:</label>
+                        <textarea id="firebaseConfigInput" rows="6" class="w-full p-2 border rounded-md font-mono text-xs" placeholder='Paste your Firebase config object here, e.g.,&#10;{&#10;  apiKey: "AIza...",&#10;  authDomain: "...",&#10;  ...&#10;}'></textarea>
+                    </div>
             </div>
             <div class="mt-6 flex justify-end">
                 <button id="saveWebhookUrlsBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm">Save & Close Settings</button>
             </div>
-             <p class="text-xs text-slate-500 mt-3">Settings are saved locally in your browser.</p>
+                <p class="text-xs text-slate-500 mt-3">Settings are saved locally in your browser.</p>
         </div>
     </div>
     
@@ -403,14 +423,35 @@
 
     <div id="toast-container"></div>
 
-    <script>
-    window.onload = function() {
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, addDoc, onSnapshot, deleteDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        // --- App Initialization ---
+        let app, auth, db, userId;
+        let currentActiveTabId = null;
+        let localNotesData = {}; 
+        let poller = { intervalId: null, timeoutId: null };
+        let matterSearchDebounceTimer;
+        let formUpdateDebounceTimer;
+        let sheetsUnsubscribe = null;
+
         // --- Element Selection ---
         const el = (id) => document.getElementById(id);
+        const loginScreen = el('login-screen');
+        const loginSettingsBtn = el('loginSettingsBtn'); // FIX: Select the new settings button
+        const appContainer = el('app-container');
+        const signInBtn = el('signInBtn');
+        const signOutBtn = el('signOutBtn');
+        const userInfoDiv = el('userInfo');
+        const userNameSpan = el('userName');
+        const userPhotoImg = el('userPhoto');
         const criminalWebhookInput = el('zapierWebhookUrl_criminal');
         const familyWebhookInput = el('zapierWebhookUrl_family');
         const clioSearchWebhookInput = el('zapierWebhookUrl_clioSearch');
         const googleSheetCsvUrlInput = el('googleSheetCsvUrl');
+        const firebaseConfigInput = el('firebaseConfigInput');
         const saveWebhookBtn = el('saveWebhookUrlsBtn');
         const settingsBtn = el('settingsBtn');
         const webhookSettingsModalOverlay = el('webhookSettingsModalOverlay');
@@ -439,14 +480,8 @@
         const extraDatesContainer = el('extra-dates-container');
         
         // --- State Management ---
-        let currentActiveTabId = null;
-        let localNotesData = {};
-        const NOTES_KEY = 'courtSheetNotes';
-        const ARCHIVED_NOTES_KEY = 'archivedCourtSheetNotes';
         const LOGO_KEY = 'appLogo';
-        let poller = { intervalId: null, timeoutId: null };
-        let matterSearchDebounceTimer;
-        let formUpdateDebounceTimer;
+        const FIREBASE_CONFIG_KEY = 'firebaseConfig';
 
         // --- Helper Functions ---
         function showToast(message, type = 'info') {
@@ -508,18 +543,24 @@
             showToast('Logo removed.', 'info');
         });
 
-        function loadWebhookUrlsToModal() {
+        function loadSettingsToModal() {
             criminalWebhookInput.value = localStorage.getItem('zapierWebhookUrl_criminal') || '';
             familyWebhookInput.value = localStorage.getItem('zapierWebhookUrl_family') || '';
             clioSearchWebhookInput.value = localStorage.getItem('zapierWebhookUrl_clioSearch') || '';
             googleSheetCsvUrlInput.value = localStorage.getItem('googleSheetCsvUrl') || '';
+            firebaseConfigInput.value = localStorage.getItem(FIREBASE_CONFIG_KEY) || '';
         }
 
-        settingsBtn.addEventListener('click', () => {
-            loadWebhookUrlsToModal();
+        // FIX: Create a reusable function to open the settings modal
+        function openSettingsModal() {
+            loadSettingsToModal();
             loadAndApplyLogo();
             webhookSettingsModalOverlay.classList.add('active');
-        });
+        }
+
+        // FIX: Add listeners to both settings buttons
+        settingsBtn.addEventListener('click', openSettingsModal);
+        loginSettingsBtn.addEventListener('click', openSettingsModal);
 
         webhookSettingsModalCloseBtn.addEventListener('click', () => webhookSettingsModalOverlay.classList.remove('active'));
         webhookSettingsModalOverlay.addEventListener('click', (e) => {
@@ -527,46 +568,60 @@
         });
 
         saveWebhookBtn.addEventListener('click', () => {
+            const oldConfig = localStorage.getItem(FIREBASE_CONFIG_KEY);
+            const newConfig = firebaseConfigInput.value.trim();
+
             localStorage.setItem('zapierWebhookUrl_criminal', criminalWebhookInput.value.trim());
             localStorage.setItem('zapierWebhookUrl_family', familyWebhookInput.value.trim());
             localStorage.setItem('zapierWebhookUrl_clioSearch', clioSearchWebhookInput.value.trim());
             localStorage.setItem('googleSheetCsvUrl', googleSheetCsvUrlInput.value.trim());
-            showToast('Settings saved!', 'success');
+            localStorage.setItem(FIREBASE_CONFIG_KEY, newConfig);
+
             webhookSettingsModalOverlay.classList.remove('active');
+            
+            // FIX: If firebase config changed, reload the page to re-initialize
+            if (oldConfig !== newConfig && newConfig) {
+                showToast('Firebase settings saved! The page will now refresh.', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showToast('Settings saved!', 'success');
+            }
         });
 
         // --- Data Retrieval & Parsing (Background Search) ---
         function parseCSV(text) {
-             const result = [];
-             const lines = text.replace(/\r/g, '').split('\n');
-             if (lines.length < 1) return [];
+                const result = [];
+                const lines = text.replace(/\r/g, '').split('\n');
+                if (lines.length < 1) return [];
 
-             const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/ /g, '_').replace(/[^a-z0-9_]/g, ''));
-             
-             for (let i = 1; i < lines.length; i++) {
-                 const values = [];
-                 let current = '';
-                 let inQuotes = false;
-                 for (let j = 0; j < lines[i].length; j++) {
-                     const char = lines[i][j];
-                     if (char === '"' && (j === 0 || lines[i][j-1] !== '\\')) {
-                         inQuotes = !inQuotes;
-                     } else if (char === ',' && !inQuotes) {
-                         values.push(current);
-                         current = '';
-                     } else {
-                         current += char;
-                     }
-                 }
-                 values.push(current);
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/ /g, '_').replace(/[^a-z0-9_]/g, ''));
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let j = 0; j < lines[i].length; j++) {
+                        const char = lines[i][j];
+                        if (char === '"' && (j === 0 || lines[i][j-1] !== '\\')) {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(current);
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    values.push(current);
 
-                 const rowObject = {};
-                 headers.forEach((header, index) => {
-                     rowObject[header] = (values[index] || '').trim().replace(/^"|"$/g, '');
-                 });
-                 result.push(rowObject);
-             }
-             return result;
+                    const rowObject = {};
+                    headers.forEach((header, index) => {
+                        rowObject[header] = (values[index] || '').trim().replace(/^"|"$/g, '');
+                    });
+                    result.push(rowObject);
+                }
+                return result;
         }
 
         async function searchByMatterNumberInBackground(matterNumber) {
@@ -647,13 +702,12 @@
                                 caseData.caseType = 'family';
                             }
 
-                            const currentData = localNotesData[currentActiveTabId] || getNewSheetData();
+                            const docRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+                            const currentDataSnap = await getDoc(docRef);
+                            const currentData = currentDataSnap.exists() ? currentDataSnap.data() : getNewSheetData();
                             const finalData = { ...currentData, ...caseData };
 
-                            populateForm(finalData);
-                            localNotesData[currentActiveTabId] = finalData;
-                            saveNotesToLocalStorage();
-                            updateTabTitle(currentActiveTabId);
+                            await setDoc(docRef, finalData, { merge: true });
                             showToast(`Matter #${matterNumber} details populated.`, 'success');
                         }
                     } catch (e) {
@@ -675,14 +729,15 @@
             }, 1000);
         });
         
-        // --- LocalStorage & Data Management ---
-        function saveNotesToLocalStorage() {
-            localStorage.setItem(NOTES_KEY, JSON.stringify(localNotesData));
-        }
-
-        function loadNotesFromLocalStorage() {
-            localNotesData = JSON.parse(localStorage.getItem(NOTES_KEY)) || {};
-            renderAllTabs();
+        // --- Firestore Data Management ---
+        async function saveNoteToFirestore(sheetId, data) {
+            if (!userId || !sheetId) return;
+            try {
+                await setDoc(doc(db, `users/${userId}/sheets`, sheetId), data, { merge: true });
+            } catch (error) {
+                console.error("Error saving note: ", error);
+                showToast("Could not save changes.", "error");
+            }
         }
 
         function getNewSheetData() {
@@ -702,7 +757,8 @@
                 nextAppearanceDateTime: "", nextAppearanceReason: "",
                 extraDates: [], 
                 extraDateReasons: [],
-                submittedToZapier: false
+                submittedToZapier: false,
+                createdAt: new Date().toISOString()
             };
         }
 
@@ -751,15 +807,15 @@
                     data[`Ex Date Reason ${index + 1}`] = extraDateReasonInputs[index].value || "";
                 });
             } else {
-                 const followUpTasks = Array.from(formEl.querySelectorAll('[name="followUpTask"]')).map(i => i.value);
-                 const followUpDues = Array.from(formEl.querySelectorAll('[name="followUpDue"]')).map(i => i.value);
-                 const followUpAssigneds = Array.from(formEl.querySelectorAll('[name="followUpAssignedTo"]')).map(i => i.value);
-                 data.followUpTask = followUpTasks;
-                 data.followUpDue = followUpDues;
-                 data.followUpAssignedTo = followUpAssigneds;
+                    const followUpTasks = Array.from(formEl.querySelectorAll('[name="followUpTask"]')).map(i => i.value);
+                    const followUpDues = Array.from(formEl.querySelectorAll('[name="followUpDue"]')).map(i => i.value);
+                    const followUpAssigneds = Array.from(formEl.querySelectorAll('[name="followUpAssignedTo"]')).map(i => i.value);
+                    data.followUpTask = followUpTasks;
+                    data.followUpDue = followUpDues;
+                    data.followUpAssignedTo = followUpAssigneds;
 
-                 data.extraDates = Array.from(formEl.querySelectorAll('.extra-date-input')).map(i => i.value);
-                 data.extraDateReasons = Array.from(formEl.querySelectorAll('.extra-date-reason-input')).map(i => i.value);
+                    data.extraDates = Array.from(formEl.querySelectorAll('.extra-date-input')).map(i => i.value);
+                    data.extraDateReasons = Array.from(formEl.querySelectorAll('.extra-date-reason-input')).map(i => i.value);
             }
 
             if (isForZapier) {
@@ -773,23 +829,21 @@
         }
 
         // --- Tab and Form UI Management ---
-        function renderAllTabs() {
-            const fragment = document.createDocumentFragment();
-            const noteIds = Object.keys(localNotesData);
+        function renderAllTabs(sheets) {
+            tabDiv.innerHTML = '';
+            const noteIds = Object.keys(sheets);
             
             if (noteIds.length > 0) {
-                noteIds.forEach(id => {
-                    const note = localNotesData[id];
-                    fragment.appendChild(createTabElement(id, note));
-                });
-                tabDiv.innerHTML = '';
-                tabDiv.appendChild(fragment);
+                noteIds.sort((a,b) => new Date(sheets[b].createdAt) - new Date(sheets[a].createdAt))
+                        .forEach(id => {
+                            const note = sheets[id];
+                            const tab = createTabElement(id, note);
+                            tabDiv.appendChild(tab);
+                        });
                 noTabsMsgSpan.classList.add('hidden');
-                
                 const lastActive = localStorage.getItem('lastActiveTabId');
-                activateTab(lastActive && localNotesData[lastActive] ? lastActive : noteIds[0]);
+                activateTab(lastActive && sheets[lastActive] ? lastActive : noteIds[0]);
             } else {
-                tabDiv.innerHTML = '';
                 tabDiv.appendChild(noTabsMsgSpan);
                 noTabsMsgSpan.classList.remove('hidden');
                 activeFormDiv.classList.add('hidden');
@@ -801,74 +855,85 @@
             const tab = document.createElement('div');
             tab.className = 'tab p-3 border-r border-slate-300 whitespace-nowrap text-sm hover:bg-indigo-100 transition-colors duration-150';
             tab.dataset.tabId = tabId;
-            updateTabTitle(tab);
+            updateTabTitle(tab, noteData);
             tab.addEventListener('click', () => activateTab(tabId));
             return tab;
         }
 
-        function updateTabTitle(tabOrId) {
-             const tab = typeof tabOrId === 'string' ? tabDiv.querySelector(`[data-tab-id="${tabOrId}"]`) : tabOrId;
-             if (!tab) return;
+        function updateTabTitle(tabOrId, noteDataOverride = null) {
+            const tab = typeof tabOrId === 'string' ? tabDiv.querySelector(`[data-tab-id="${tabOrId}"]`) : tabOrId;
+            if (!tab) return;
             
-             const noteData = localNotesData[tab.dataset.tabId] || {};
-             const name = noteData.clientName;
-             const type = noteData.caseType;
-             const desc = noteData.matterDescription;
+            const noteData = noteDataOverride || localNotesData[tab.dataset.tabId] || {};
+            const name = noteData.clientName;
+            const type = noteData.caseType;
+            const desc = noteData.matterDescription;
 
-             const dateForTitle = noteData.noteDate ? new Date(noteData.noteDate + 'T00:00:00') : new Date();
-             const datePart = ` (${dateForTitle.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit'})})`;
-             
-             const typePrefix = type ? type.charAt(0).toUpperCase() + ": " : "";
-             
-             let fullTitle = name || "New Sheet";
-             if (name) {
-                 fullTitle = typePrefix + name;
-                 if (desc) {
-                     fullTitle += `: ${desc}`;
-                 }
-             }
-             
-             fullTitle += datePart;
+            const dateForTitle = noteData.noteDate ? new Date(noteData.noteDate + 'T00:00:00') : new Date();
+            const datePart = ` (${dateForTitle.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit'})})`;
             
-             tab.textContent = fullTitle.length > 40 ? fullTitle.substring(0, 37) + "..." : fullTitle;
-             tab.title = fullTitle;
+            const typePrefix = type ? type.charAt(0).toUpperCase() + ": " : "";
+            
+            let fullTitle = name || "New Sheet";
+            if (name) {
+                fullTitle = typePrefix + name;
+                if (desc) {
+                    fullTitle += `: ${desc}`;
+                }
+            }
+            
+            fullTitle += datePart;
+            
+            tab.textContent = fullTitle.length > 40 ? fullTitle.substring(0, 37) + "..." : fullTitle;
+            tab.title = fullTitle;
         }
 
 
-        addNewBtn.addEventListener('click', () => {
-            const newId = `sheet_${Date.now()}`;
-            localNotesData[newId] = getNewSheetData();
-            saveNotesToLocalStorage();
-            renderAllTabs();
-            activateTab(newId);
-            formEl.elements.judgeName.focus();
-        });
+        async function addNewNote() {
+            if (!userId) {
+                showToast("Not signed in, please refresh.", "error");
+                return;
+            }
+            const newNoteData = getNewSheetData();
+            try {
+                const docRef = await addDoc(collection(db, `users/${userId}/sheets`), newNoteData);
+                activateTab(docRef.id);
+            } catch (error) {
+                console.error("Error creating new sheet: ", error);
+                showToast("Could not create new sheet.", "error");
+            }
+        }
 
-        function activateTab(tabId) {
-            if (!tabId || !localNotesData[tabId]) {
-                 const noteIds = Object.keys(localNotesData);
-                 if (noteIds.length > 0) {
-                     activateTab(noteIds[0]);
-                 } else {
-                     currentActiveTabId = null;
-                     activeFormDiv.classList.add('hidden');
-                     noActiveMsgDiv.classList.remove('hidden');
-                     noTabsMsgSpan.classList.remove('hidden');
-                 }
-                 return;
+        addNewBtn.addEventListener('click', addNewNote);
+
+        async function activateTab(tabId) {
+            if (!tabId) {
+                    currentActiveTabId = null;
+                    activeFormDiv.classList.add('hidden');
+                    noActiveMsgDiv.classList.remove('hidden');
+                    noTabsMsgSpan.classList.remove('hidden');
+                    return;
             }
 
             currentActiveTabId = tabId;
             localStorage.setItem('lastActiveTabId', tabId);
+            
             clearInterval(poller.intervalId);
             clearTimeout(poller.timeoutId);
             matterSearchStatus.innerHTML = '';
 
             Array.from(tabDiv.children).forEach(t => t.classList?.toggle('active', t.dataset?.tabId === tabId));
             
-            populateForm(localNotesData[tabId]);
-            activeFormDiv.classList.remove('hidden');
-            noActiveMsgDiv.classList.add('hidden');
+            const docRef = doc(db, `users/${userId}/sheets`, tabId);
+            const docSnap = await getDoc(docRef);
+
+            if(docSnap.exists()){
+                populateForm(docSnap.data());
+                activeFormDiv.classList.remove('hidden');
+                noActiveMsgDiv.classList.add('hidden');
+            } else {
+                console.log("No such document!");
+            }
         }
         
         function populateForm(data) {
@@ -879,22 +944,26 @@
                 const elements = formEl.elements[key];
                 const value = data[key];
                 
-                if (key === 'familyOpposingCounsel') {
-                    renderDynamicInputs(el('opposing-counsel-container'), key, value);
-                } else if (key === 'familyOtherCounsel') {
-                    renderDynamicInputs(el('other-counsel-container'), key, value);
-                } else if (key === 'familyAFC') {
-                    renderDynamicInputs(el('afc-container'), key, value);
+                if (key === 'familyOpposingCounsel' || key === 'familyOtherCounsel' || key === 'familyAFC') {
+                    const containerId = {
+                        'familyOpposingCounsel': 'opposing-counsel-container',
+                        'familyOtherCounsel': 'other-counsel-container',
+                        'familyAFC': 'afc-container'
+                    }[key];
+                    renderDynamicInputs(el(containerId), key, value);
                 } else if (key === 'extraDates' || key === 'extraDateReasons') {
-                    renderExtraDates(data.extraDates, data.extraDateReasons);
+                    // This is handled together to avoid rendering twice
+                    if(key === 'extraDates') {
+                       renderExtraDates(data.extraDates, data.extraDateReasons);
+                    }
                 }
                 else if (key.startsWith('followUp') && Array.isArray(value)) {
-                     const nodeList = formEl.elements[key];
-                     if(nodeList) {
-                         value.forEach((v, i) => {
-                             if(nodeList[i]) nodeList[i].value = v;
-                         });
-                     }
+                    const nodeList = formEl.elements[key];
+                    if(nodeList) {
+                        value.forEach((v, i) => {
+                            if(nodeList[i]) nodeList[i].value = v;
+                        });
+                    }
                 } else if (elements instanceof NodeList && !elements.type) { 
                     elements.forEach(el => {
                         if (el.value === value) {
@@ -947,8 +1016,14 @@
 
                 const div = document.createElement('div');
                 div.className = 'flex items-center mt-2';
-                div.innerHTML = `<input type="text" name="${name}" class="w-full p-2 border rounded">`;
+                div.innerHTML = `<input type="text" name="${name}" class="w-full p-2 border rounded"><button type="button" class="remove-btn">&times;</button>`;
                 container.appendChild(div);
+            }
+            if (e.target.classList.contains('remove-btn')) {
+                // This handles removing dynamically added counsel members
+                if(e.target.parentElement.parentElement.id !== 'extra-dates-container') {
+                    e.target.parentElement.remove();
+                }
             }
         });
         
@@ -986,47 +1061,67 @@
 
         formEl.addEventListener('change', updateAllConditionalVisibility);
         
-        let debounceTimer;
         formEl.addEventListener('input', () => {
             if (!currentActiveTabId) return;
 
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
+            clearTimeout(formUpdateDebounceTimer);
+            formUpdateDebounceTimer = setTimeout(async () => {
                 const data = getFormData();
+                // Update local cache immediately for instant title update
                 localNotesData[currentActiveTabId] = { ...localNotesData[currentActiveTabId], ...data };
-                saveNotesToLocalStorage();
-                updateTabTitle(tabDiv.querySelector(`[data-tab-id="${currentActiveTabId}"]`));
+                updateTabTitle(currentActiveTabId);
+                
+                await saveNoteToFirestore(currentActiveTabId, data);
                 showToast('Auto-saved!', 'info');
-            }, 1000);
+            }, 1500);
         });
 
-        clearFormButton.addEventListener('click', () => {
+        clearFormButton.addEventListener('click', async () => {
             if (!currentActiveTabId) return;
             const newNote = getNewSheetData();
-            localNotesData[currentActiveTabId] = newNote;
-            populateForm(newNote);
-            saveNotesToLocalStorage();
-            updateTabTitle(currentActiveTabId);
+            await setDoc(doc(db, `users/${userId}/sheets`, currentActiveTabId), newNote);
             showToast('Form cleared.', 'info');
         });
 
-        closeNoteBtn.addEventListener('click', () => {
-             if (!currentActiveTabId) return;
-             const closedNote = localNotesData[currentActiveTabId];
-             let archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
-             archive[currentActiveTabId] = closedNote;
-             localStorage.setItem(ARCHIVED_NOTES_KEY, JSON.stringify(archive));
-             
-             delete localNotesData[currentActiveTabId];
-             saveNotesToLocalStorage();
-             currentActiveTabId = null;
-             renderAllTabs();
-             showToast('Sheet archived.', 'info');
-        });
+        async function closeAndArchiveSheet() {
+            if (!currentActiveTabId) return;
+            
+            const sheetRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+            const sheetSnap = await getDoc(sheetRef);
+
+            if(sheetSnap.exists()){
+                const sheetData = sheetSnap.data();
+                const archiveRef = doc(db, `users/${userId}/archivedSheets`, currentActiveTabId);
+                await setDoc(archiveRef, sheetData);
+                await deleteDoc(sheetRef);
+
+                showToast('Sheet archived.', 'info');
+            }
+        }
+
+        closeNoteBtn.addEventListener('click', closeAndArchiveSheet);
 
         // --- Archive Logic ---
-        viewOldSheetsBtn.addEventListener('click', () => {
-            renderArchivedSheets();
+        viewOldSheetsBtn.addEventListener('click', async () => {
+            if (!userId) return;
+            const archiveCollection = collection(db, `users/${userId}/archivedSheets`);
+            const q = query(archiveCollection, orderBy("noteDate", "desc"));
+            const querySnapshot = await getDocs(q);
+            
+            archivedSheetsContainer.innerHTML = '';
+            if(querySnapshot.empty) {
+                archivedSheetsContainer.innerHTML = '<p class="text-slate-500">No archived sheets.</p>';
+            } else {
+                querySnapshot.forEach((doc) => {
+                    const note = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'archive-item';
+                    item.dataset.archiveId = doc.id;
+                    item.innerHTML = `<p class="font-semibold">${note.clientName || 'Untitled'}</p><p class="text-sm text-slate-600">${note.noteDate}</p>`;
+                    item.addEventListener('click', () => restoreSheet(doc.id));
+                    archivedSheetsContainer.appendChild(item);
+                });
+            }
             archiveModalOverlay.classList.add('active');
         });
 
@@ -1034,44 +1129,20 @@
         archiveModalOverlay.addEventListener('click', (e) => {
             if (e.target === archiveModalOverlay) archiveModalOverlay.classList.remove('active');
         });
-
-        function renderArchivedSheets() {
-            const archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
-            archivedSheetsContainer.innerHTML = '';
-            
-            const sortedKeys = Object.keys(archive).sort((a, b) => new Date(archive[b].noteDate) - new Date(archive[a].noteDate));
-
-            if (sortedKeys.length === 0) {
-                archivedSheetsContainer.innerHTML = '<p class="text-slate-500">No archived sheets.</p>';
-                return;
-            }
-
-            sortedKeys.forEach(key => {
-                const note = archive[key];
-                const item = document.createElement('div');
-                item.className = 'archive-item';
-                item.dataset.archiveId = key;
-                item.innerHTML = `<p class="font-semibold">${note.clientName || 'Untitled'}</p><p class="text-sm text-slate-600">${note.noteDate}</p>`;
-                item.addEventListener('click', () => restoreSheet(key));
-                archivedSheetsContainer.appendChild(item);
-            });
-        }
         
-        function restoreSheet(archiveId) {
-            let archive = JSON.parse(localStorage.getItem(ARCHIVED_NOTES_KEY)) || {};
-            const noteToRestore = archive[archiveId];
-            
-            if (noteToRestore) {
-                delete archive[archiveId];
-                localStorage.setItem(ARCHIVED_NOTES_KEY, JSON.stringify(archive));
+        async function restoreSheet(archiveId) {
+            if (!userId) return;
+            const archiveRef = doc(db, `users/${userId}/archivedSheets`, archiveId);
+            const archiveSnap = await getDoc(archiveRef);
 
-                const newId = `sheet_${Date.now()}`;
+            if (archiveSnap.exists()) {
+                const noteToRestore = archiveSnap.data();
                 noteToRestore.submittedToZapier = false; // Allow re-submission
-                localNotesData[newId] = noteToRestore;
-                saveNotesToLocalStorage();
                 
-                renderAllTabs();
-                activateTab(newId);
+                await setDoc(doc(db, `users/${userId}/sheets`, archiveId), noteToRestore);
+                await deleteDoc(archiveRef);
+                
+                activateTab(archiveId);
                 archiveModalOverlay.classList.remove('active');
                 showToast('Sheet restored.', 'success');
             }
@@ -1079,14 +1150,15 @@
 
         // --- SUBMISSION LOGIC ---
         function clearValidationErrors() {
-            formEl.querySelectorAll('label.error, .border-error').forEach(el => {
-                el.classList.remove('error', 'border-error');
-            });
+            formEl.querySelectorAll('label.error').forEach(el => el.classList.remove('error'));
+            formEl.querySelectorAll('.border-error').forEach(el => el.classList.remove('border-error'));
         }
 
         function highlightErrors(invalidFields, invalidInputs = []) {
             invalidFields.forEach(fieldName => {
                 const label = formEl.querySelector(`label[for="${fieldName}"]`);
+                const input = el(fieldName);
+                if(input) input.classList.add('border-error');
                 if (label) {
                     label.classList.add('error');
                 }
@@ -1102,13 +1174,12 @@
             const check = (fieldName) => {
                 const value = data[fieldName];
                 if (value === undefined || value === null || String(value).trim() === '') {
-                     invalidFields.push(fieldName);
+                    invalidFields.push(fieldName);
                 }
             };
 
             ['clientName', 'judgeName', 'caseType', 'courtName', 'durationHours'].forEach(check);
 
-            // Validate Follow-up Tasks
             const followUpTasks = Array.from(formEl.querySelectorAll('[name="followUpTask"]'));
             followUpTasks.forEach((taskInput, index) => {
                 if (taskInput.value.trim()) {
@@ -1161,7 +1232,10 @@
             
             clearValidationErrors();
 
-            const currentNote = localNotesData[currentActiveTabId];
+            const docRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+            const currentNoteSnap = await getDoc(docRef);
+            const currentNote = currentNoteSnap.data();
+
             if (currentNote.submittedToZapier) {
                 showToast('Results were already submitted for this case.', 'info');
                 return;
@@ -1190,8 +1264,7 @@
                     body: JSON.stringify(data),
                 });
                 
-                localNotesData[currentActiveTabId].submittedToZapier = true;
-                saveNotesToLocalStorage();
+                await setDoc(docRef, { submittedToZapier: true }, { merge: true });
                 showToast('Submitted to Zapier successfully!', 'success');
 
             } catch (error) {
@@ -1265,11 +1338,78 @@
             }
         });
 
+        // --- Firebase Initialization and Auth ---
+        function initializeFirebase() {
+            const configStr = localStorage.getItem(FIREBASE_CONFIG_KEY);
+            if (!configStr) {
+                showToast("Firebase is not configured. Please add your config in Settings.", 'error');
+                return;
+            }
+            try {
+                const firebaseConfig = JSON.parse(configStr);
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setupAuthObserver();
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                showToast("Invalid Firebase config. Please check settings.", "error");
+            }
+        }
+        
+        function setupAuthObserver() {
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    // User is signed in.
+                    userId = user.uid;
+                    userNameSpan.textContent = user.displayName || 'User';
+                    userPhotoImg.src = user.photoURL || 'https://placehold.co/32x32/cccccc/ffffff?text=U';
+                    loginScreen.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+
+                    if (sheetsUnsubscribe) sheetsUnsubscribe(); // Unsubscribe from old listener
+                    const sheetsCollection = collection(db, `users/${userId}/sheets`);
+                    const q = query(sheetsCollection, orderBy("createdAt", "desc"));
+                    sheetsUnsubscribe = onSnapshot(q, (snapshot) => {
+                        const sheets = {};
+                        snapshot.forEach(doc => sheets[doc.id] = doc.data());
+                        localNotesData = sheets; 
+                        renderAllTabs(sheets);
+                    });
+                } else {
+                    // User is signed out.
+                    userId = null;
+                    if (sheetsUnsubscribe) sheetsUnsubscribe();
+                    loginScreen.classList.remove('hidden');
+                    appContainer.classList.add('hidden');
+                }
+            });
+        }
+        
+        signInBtn.addEventListener('click', () => {
+            if (!auth) {
+                showToast("Firebase is not configured. Please add your config in Settings.", 'error');
+                return;
+            }
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(error => {
+                console.error("Google Sign-In failed:", error);
+                showToast("Could not sign in with Google.", "error");
+            });
+        });
+        
+        userInfoDiv.addEventListener('click', () => {
+                signOutBtn.classList.toggle('hidden');
+        });
+        
+        signOutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+
         // --- Initial Load ---
         loadAndApplyLogo();
-        loadWebhookUrlsToModal();
-        loadNotesFromLocalStorage();
-    };
+        initializeFirebase();
+        
     </script>
 </body>
 </html>
