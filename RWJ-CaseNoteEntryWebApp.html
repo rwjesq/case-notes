@@ -14,9 +14,26 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
         body { font-family: 'Inter', sans-serif; }
-        .tab { cursor: pointer; }
+        .tab { 
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .tab.active { border-bottom-width: 2px; border-color: #4F46E5; color: #4F46E5; font-weight: 600;}
         .tab:hover { background-color: #e0e7ff; }
+        .author-initials {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #c7d2fe;
+            color: #4338ca;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
         textarea { min-height: 80px; }
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -492,7 +509,7 @@
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 5000); // Increased duration for error messages
+                setTimeout(() => toast.remove(), 5000); 
             }, 5000);
         }
 
@@ -698,7 +715,7 @@
                                 caseData.caseType = 'family';
                             }
 
-                            const docRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+                            const docRef = doc(db, `sheets`, currentActiveTabId);
                             const currentDataSnap = await getDoc(docRef);
                             const currentData = currentDataSnap.exists() ? currentDataSnap.data() : getNewSheetData();
                             const finalData = { ...currentData, ...caseData };
@@ -729,7 +746,7 @@
         async function saveNoteToFirestore(sheetId, data) {
             if (!userId || !sheetId) return;
             try {
-                await setDoc(doc(db, `users/${userId}/sheets`, sheetId), data, { merge: true });
+                await setDoc(doc(db, "sheets", sheetId), data, { merge: true });
             } catch (error) {
                 console.error("Error saving note: ", error);
                 showToast("Could not save changes.", "error");
@@ -755,6 +772,7 @@
                 extraDateReasons: [],
                 submittedToZapier: false,
                 createdAt: new Date().toISOString()
+                // Author info will be added in addNewNote
             };
         }
 
@@ -863,7 +881,7 @@
             const noteData = noteDataOverride || localNotesData[tab.dataset.tabId] || {};
             const name = noteData.clientName;
             const type = noteData.caseType;
-            const desc = noteData.matterDescription;
+            const authorName = noteData.authorName || '';
 
             const dateForTitle = noteData.noteDate ? new Date(noteData.noteDate + 'T00:00:00') : new Date();
             const datePart = ` (${dateForTitle.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit'})})`;
@@ -873,43 +891,45 @@
             let fullTitle = name || "New Sheet";
             if (name) {
                 fullTitle = typePrefix + name;
-                if (desc) {
-                    fullTitle += `: ${desc}`;
-                }
             }
             
             fullTitle += datePart;
             
-            tab.textContent = fullTitle.length > 40 ? fullTitle.substring(0, 37) + "..." : fullTitle;
-            tab.title = fullTitle;
+            const initials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+
+            tab.innerHTML = `
+                <span class="author-initials" title="Created by ${authorName}">${initials}</span>
+                <span class="tab-title-text"></span>
+            `;
+            const titleTextEl = tab.querySelector('.tab-title-text');
+            titleTextEl.textContent = fullTitle.length > 40 ? fullTitle.substring(0, 37) + "..." : fullTitle;
+            tab.title = `Created by ${authorName}: ${fullTitle}`;
         }
 
-
         async function addNewNote() {
-            if (!userId) {
-                showToast("Not signed in, please refresh.", "error");
+            if (!userId || !db) {
+                showToast("Application not ready. Please wait a moment and try again.", "error");
                 return;
             }
-            const newNoteData = getNewSheetData();
+            const newNoteData = {
+                ...getNewSheetData(),
+                authorUid: auth.currentUser.uid,
+                authorName: auth.currentUser.displayName,
+                authorPhotoUrl: auth.currentUser.photoURL
+            };
             try {
-                const docRef = await addDoc(collection(db, `users/${userId}/sheets`), newNoteData);
+                const docRef = await addDoc(collection(db, `sheets`), newNoteData);
                 activateTab(docRef.id);
             } catch (error) {
                 console.error("Error creating new sheet: ", error);
-                showToast("Could not create new sheet.", "error");
+                showToast("Could not create new sheet. Check Firestore rules.", "error");
             }
         }
 
         addNewBtn.addEventListener('click', addNewNote);
 
         async function activateTab(tabId) {
-            if (!tabId) {
-                    currentActiveTabId = null;
-                    activeFormDiv.classList.add('hidden');
-                    noActiveMsgDiv.classList.remove('hidden');
-                    noTabsMsgSpan.classList.remove('hidden');
-                    return;
-            }
+            if (!tabId || !db) return;
 
             currentActiveTabId = tabId;
             localStorage.setItem('lastActiveTabId', tabId);
@@ -920,15 +940,30 @@
 
             Array.from(tabDiv.children).forEach(t => t.classList?.toggle('active', t.dataset?.tabId === tabId));
             
-            const docRef = doc(db, `users/${userId}/sheets`, tabId);
-            const docSnap = await getDoc(docRef);
+            try {
+                const docRef = doc(db, `sheets`, tabId);
+                const docSnap = await getDoc(docRef);
 
-            if(docSnap.exists()){
-                populateForm(docSnap.data());
-                activeFormDiv.classList.remove('hidden');
-                noActiveMsgDiv.classList.add('hidden');
-            } else {
-                console.log("No such document!");
+                if(docSnap.exists()){
+                    const noteData = docSnap.data();
+                    populateForm(noteData);
+                    
+                    // Disable form if current user is not the author
+                    const isAuthor = userId === noteData.authorUid;
+                    formEl.querySelectorAll('input, select, textarea, button').forEach(el => {
+                       if(!el.closest('#user-profile')) { // Don't disable the user/signout button
+                         el.disabled = !isAuthor;
+                       }
+                    });
+
+                    activeFormDiv.classList.remove('hidden');
+                    noActiveMsgDiv.classList.add('hidden');
+                } else {
+                    console.log("No such document!");
+                }
+            } catch(error) {
+                console.error("Error activating tab: ", error);
+                showToast("Could not load the selected sheet.", "error");
             }
         }
         
@@ -948,7 +983,6 @@
                     }[key];
                     renderDynamicInputs(el(containerId), key, value);
                 } else if (key === 'extraDates' || key === 'extraDateReasons') {
-                    // This is handled together to avoid rendering twice
                     if(key === 'extraDates') {
                        renderExtraDates(data.extraDates, data.extraDateReasons);
                     }
@@ -1003,7 +1037,6 @@
             });
         }
         
-        // --- Form Interaction & Dynamic Fields ---
         formEl.addEventListener('click', (e) => {
             if (e.target.classList.contains('add-btn')) {
                 const targetId = e.target.dataset.target;
@@ -1016,7 +1049,6 @@
                 container.appendChild(div);
             }
             if (e.target.classList.contains('remove-btn')) {
-                // This handles removing dynamically added counsel members
                 if(e.target.parentElement.parentElement.id !== 'extra-dates-container') {
                     e.target.parentElement.remove();
                 }
@@ -1028,11 +1060,8 @@
             const isFamily = caseType === 'family';
             const isCriminal = caseType === 'criminal';
 
-            // Main sections
             el('familySpecificFields').classList.toggle('hidden', !isFamily);
             el('criminalSpecificFields').classList.toggle('hidden', !isCriminal);
-            
-            // Sub-sections
             el('imhoff-case-field').classList.toggle('hidden', !isCriminal);
             el('imhoff-details').classList.toggle('hidden', !(isCriminal && el('imhoffCase').value === 'Yes'));
             el('criminal-discovery-details').classList.toggle('hidden', !(isCriminal && el('criminalDiscovery').value === 'Yes'));
@@ -1063,7 +1092,6 @@
             clearTimeout(formUpdateDebounceTimer);
             formUpdateDebounceTimer = setTimeout(async () => {
                 const data = getFormData();
-                // Update local cache immediately for instant title update
                 localNotesData[currentActiveTabId] = { ...localNotesData[currentActiveTabId], ...data };
                 updateTabTitle(currentActiveTabId);
                 
@@ -1074,20 +1102,28 @@
 
         clearFormButton.addEventListener('click', async () => {
             if (!currentActiveTabId) return;
+            const originalNoteData = localNotesData[currentActiveTabId];
             const newNote = getNewSheetData();
-            await setDoc(doc(db, `users/${userId}/sheets`, currentActiveTabId), newNote);
+            newNote.authorUid = originalNoteData.authorUid;
+            newNote.authorName = originalNoteData.authorName;
+            newNote.authorPhotoUrl = originalNoteData.authorPhotoUrl;
+            await setDoc(doc(db, `sheets`, currentActiveTabId), newNote);
             showToast('Form cleared.', 'info');
         });
 
         async function closeAndArchiveSheet() {
             if (!currentActiveTabId) return;
             
-            const sheetRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+            const sheetRef = doc(db, `sheets`, currentActiveTabId);
             const sheetSnap = await getDoc(sheetRef);
 
             if(sheetSnap.exists()){
                 const sheetData = sheetSnap.data();
-                const archiveRef = doc(db, `users/${userId}/archivedSheets`, currentActiveTabId);
+                if(userId !== sheetData.authorUid) {
+                    showToast("You can only close your own sheets.", "error");
+                    return;
+                }
+                const archiveRef = doc(db, `archivedSheets`, currentActiveTabId);
                 await setDoc(archiveRef, sheetData);
                 await deleteDoc(sheetRef);
 
@@ -1099,26 +1135,47 @@
 
         // --- Archive Logic ---
         viewOldSheetsBtn.addEventListener('click', async () => {
-            if (!userId) return;
-            const archiveCollection = collection(db, `users/${userId}/archivedSheets`);
-            const q = query(archiveCollection, orderBy("noteDate", "desc"));
-            const querySnapshot = await getDocs(q);
-            
-            archivedSheetsContainer.innerHTML = '';
-            if(querySnapshot.empty) {
-                archivedSheetsContainer.innerHTML = '<p class="text-slate-500">No archived sheets.</p>';
-            } else {
-                querySnapshot.forEach((doc) => {
-                    const note = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'archive-item';
-                    item.dataset.archiveId = doc.id;
-                    item.innerHTML = `<p class="font-semibold">${note.clientName || 'Untitled'}</p><p class="text-sm text-slate-600">${note.noteDate}</p>`;
-                    item.addEventListener('click', () => restoreSheet(doc.id));
-                    archivedSheetsContainer.appendChild(item);
-                });
+            if (!userId || !db) {
+                showToast("Application not ready. Please wait a moment and try again.", "error");
+                return;
             }
-            archiveModalOverlay.classList.add('active');
+            const archiveCollection = collection(db, `archivedSheets`);
+            const q = query(archiveCollection, orderBy("noteDate", "desc"));
+            try {
+                const querySnapshot = await getDocs(q);
+                
+                archivedSheetsContainer.innerHTML = '';
+                if(querySnapshot.empty) {
+                    archivedSheetsContainer.innerHTML = '<p class="text-slate-500">No archived sheets.</p>';
+                } else {
+                    querySnapshot.forEach((docSnap) => {
+                        const note = docSnap.data();
+                        const item = document.createElement('div');
+                        item.className = 'archive-item flex justify-between items-center';
+                        item.innerHTML = `
+                            <div>
+                                <p class="font-semibold">${note.clientName || 'Untitled'}</p>
+                                <p class="text-sm text-slate-600">Archived by: ${note.authorName || 'Unknown'}</p>
+                            </div>
+                        `;
+                         if(userId === note.authorUid) {
+                            const restoreBtn = document.createElement('button');
+                            restoreBtn.textContent = "Restore";
+                            restoreBtn.className = "px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md hover:bg-green-200";
+                            restoreBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                restoreSheet(docSnap.id);
+                            };
+                            item.appendChild(restoreBtn);
+                        }
+                        archivedSheetsContainer.appendChild(item);
+                    });
+                }
+                archiveModalOverlay.classList.add('active');
+            } catch(error) {
+                console.error("Error viewing old sheets:", error);
+                showToast("Could not load archived sheets. Check Firestore rules.", "error");
+            }
         });
 
         archiveModalCloseBtn.addEventListener('click', () => archiveModalOverlay.classList.remove('active'));
@@ -1127,20 +1184,29 @@
         });
         
         async function restoreSheet(archiveId) {
-            if (!userId) return;
-            const archiveRef = doc(db, `users/${userId}/archivedSheets`, archiveId);
-            const archiveSnap = await getDoc(archiveRef);
+            if (!userId || !db) return;
+            const archiveRef = doc(db, `archivedSheets`, archiveId);
+            try {
+                const archiveSnap = await getDoc(archiveRef);
 
-            if (archiveSnap.exists()) {
-                const noteToRestore = archiveSnap.data();
-                noteToRestore.submittedToZapier = false; // Allow re-submission
-                
-                await setDoc(doc(db, `users/${userId}/sheets`, archiveId), noteToRestore);
-                await deleteDoc(archiveRef);
-                
-                activateTab(archiveId);
-                archiveModalOverlay.classList.remove('active');
-                showToast('Sheet restored.', 'success');
+                if (archiveSnap.exists()) {
+                     const noteToRestore = archiveSnap.data();
+                     if(userId !== noteToRestore.authorUid) {
+                         showToast("You can only restore your own sheets.", "error");
+                         return;
+                     }
+                    noteToRestore.submittedToZapier = false; 
+                    
+                    await setDoc(doc(db, `sheets`, archiveId), noteToRestore);
+                    await deleteDoc(archiveRef);
+                    
+                    activateTab(archiveId);
+                    archiveModalOverlay.classList.remove('active');
+                    showToast('Sheet restored.', 'success');
+                }
+            } catch (error) {
+                 console.error("Error restoring sheet:", error);
+                showToast("Could not restore sheet.", "error");
             }
         }
 
@@ -1228,7 +1294,7 @@
             
             clearValidationErrors();
 
-            const docRef = doc(db, `users/${userId}/sheets`, currentActiveTabId);
+            const docRef = doc(db, `sheets`, currentActiveTabId);
             const currentNoteSnap = await getDoc(docRef);
             const currentNote = currentNoteSnap.data();
 
@@ -1356,24 +1422,27 @@
         function setupAuthObserver() {
             onAuthStateChanged(auth, user => {
                 if (user) {
-                    // User is signed in.
                     userId = user.uid;
                     userNameSpan.textContent = user.displayName || 'User';
                     userPhotoImg.src = user.photoURL || 'https://placehold.co/32x32/cccccc/ffffff?text=U';
                     loginScreen.classList.add('hidden');
                     appContainer.classList.remove('hidden');
 
-                    if (sheetsUnsubscribe) sheetsUnsubscribe(); // Unsubscribe from old listener
-                    const sheetsCollection = collection(db, `users/${userId}/sheets`);
+                    if (sheetsUnsubscribe) sheetsUnsubscribe();
+                    const sheetsCollection = collection(db, `sheets`);
                     const q = query(sheetsCollection, orderBy("createdAt", "desc"));
+                    
                     sheetsUnsubscribe = onSnapshot(q, (snapshot) => {
                         const sheets = {};
                         snapshot.forEach(doc => sheets[doc.id] = doc.data());
                         localNotesData = sheets; 
                         renderAllTabs(sheets);
+                    }, (error) => {
+                        console.error("Error fetching sheets:", error);
+                        showToast("Error: Could not load sheets. Please check Firestore DB and security rules.", "error");
                     });
+
                 } else {
-                    // User is signed out.
                     userId = null;
                     if (sheetsUnsubscribe) sheetsUnsubscribe();
                     loginScreen.classList.remove('hidden');
@@ -1382,7 +1451,6 @@
             });
         }
         
-        // FIX: Update the sign-in function to provide better error feedback.
         signInBtn.addEventListener('click', () => {
             if (!auth) {
                 showToast("Firebase is not configured. Please add your config in Settings.", 'error');
@@ -1391,17 +1459,11 @@
             const provider = new GoogleAuthProvider();
             signInWithPopup(auth, provider)
                 .then((result) => {
-                    // This gives you a Google Access Token. You can use it to access the Google API.
-                    const credential = GoogleAuthProvider.credentialFromResult(result);
-                    const token = credential.accessToken;
-                    // The signed-in user info.
                     const user = result.user;
                     showToast(`Welcome, ${user.displayName}!`, 'success');
                 })
                 .catch((error) => {
-                    // Handle Errors here.
                     console.error("Google Sign-In failed:", error);
-                    // Display the specific error message to the user for better debugging.
                     showToast(`Login Failed: ${error.code}`, 'error');
                 });
         });
